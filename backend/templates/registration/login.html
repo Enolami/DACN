@@ -1,0 +1,14 @@
+{% load socialaccount %}
+
+<h2>Log In</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Log In adfadf</button>
+</form>
+<p><a href="{% url 'password_reset' %}">Forgot password?</a></p>
+
+<hr>
+<h3>Or log in with:</h3>
+<a href="{% provider_login_url 'google' %}">Login with Google</a><br>
+<a href="{% provider_login_url 'github' %}">Login with GitHub</a>
