@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, TemplateView
 from .forms import CustomUserCreationForm
@@ -11,3 +11,10 @@ class SignUpView(CreateView):
 
 class DashboardView(TemplateView):
     template_name = 'registration/dashboard.html'
+
+def home_view(request):
+    """Redirect to dashboard if logged in, otherwise to login"""
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    else:
+        return redirect('account_login')
