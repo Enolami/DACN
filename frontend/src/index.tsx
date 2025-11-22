@@ -13,6 +13,8 @@ root.render(
       onLogin={() => console.log('Login clicked')}
       onSkipToSubscription={() => console.log('Skip to subscription clicked')}
     />
+
+    
   </React.StrictMode>
 );
 
