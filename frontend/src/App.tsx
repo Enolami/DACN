@@ -4,8 +4,9 @@ import { SignUpPage } from './components/SignUpPage';
 import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { SubscriptionPage } from './components/SubscriptionPage';
+import { HomePage } from './components/HomePage';
 
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription';
+type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
@@ -28,9 +29,18 @@ function App() {
   const handleSelectPlan = (plan: 'free' | 'premium') => {
     console.log(`Selected plan: ${plan}`);
     // TODO: Implement plan selection logic (API call, save to database, etc.)
-    // After selecting plan, navigate to dashboard or main app
-    // For now, just log the selection
-    // setCurrentView('dashboard'); // Uncomment when dashboard is ready
+    // After selecting plan, navigate to home page
+    setCurrentView('home');
+  };
+
+  const handleNavigate = (page: string, data?: any) => {
+    console.log(`Navigating to: ${page}`, data);
+    // TODO: Implement navigation logic for different pages
+    // For now, handle basic navigation
+    if (page === 'playlist' || page === 'artist') {
+      // TODO: Navigate to playlist/artist detail page when implemented
+      console.log(`Navigate to ${page}:`, data);
+    }
   };
 
   const handleNavigateToSignUp = () => {
@@ -108,6 +118,12 @@ function App() {
         return (
           <SubscriptionPage 
             onSelectPlan={handleSelectPlan}
+          />
+        );
+      case 'home':
+        return (
+          <HomePage 
+            onNavigate={handleNavigate}
           />
         );
       default:
