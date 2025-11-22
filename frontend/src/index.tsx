@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { LoginPage } from './components/LoginPage';
+import App from './App';
 import './styles/global.css';
 
 const root = ReactDOM.createRoot(
@@ -9,12 +9,7 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <LoginPage 
-      onLogin={() => console.log('Login clicked')}
-      onSkipToSubscription={() => console.log('Skip to subscription clicked')}
-    />
-
-    
+    <App />
   </React.StrictMode>
 );
 

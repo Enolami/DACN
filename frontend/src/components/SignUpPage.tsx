@@ -1,18 +1,20 @@
-import * as React from 'react';
-import { Mail, Lock, Sparkles } from 'lucide-react';
+import { Mail, Lock, Sparkles, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 
-interface LoginPageProps {
-  onLogin: () => void;
-  onSkipToSubscription: () => void;
-  onForgotPassword?: () => void;
+interface SignUpPageProps {
+  onSignUp: () => void;
+  onNavigateToLogin: () => void;
 }
 
-export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: LoginPageProps) {
+export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <div className="min-h-screen w-full bg-black flex items-center justify-center relative overflow-hidden">
       {/* Animated Background Gradients */}
@@ -55,7 +57,7 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
         />
       </div>
 
-      {/* Login Card */}
+      {/* Sign Up Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -70,15 +72,15 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
             </div>
           </div>
 
-          <h1 className="text-white text-center text-3xl mb-2">Welcome Back</h1>
-          <p className="text-gray-400 text-center mb-8">Log in to continue your musical journey</p>
+          <h1 className="text-white text-center text-3xl mb-2">Create an Account</h1>
+          <p className="text-gray-400 text-center mb-8">Join us and discover your next favorite song</p>
 
-          {/* Social Login Buttons */}
+          {/* Social Sign Up Buttons */}
           <div className="space-y-3 mb-6">
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 className="w-full bg-white hover:bg-gray-100 text-black gap-3 py-6 rounded-xl"
-                onClick={onSkipToSubscription}
+                onClick={onSignUp}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -105,7 +107,7 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 className="w-full bg-white hover:bg-gray-100 text-black gap-3 py-6 rounded-xl"
-                onClick={onSkipToSubscription}
+                onClick={onSignUp}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
@@ -122,8 +124,23 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
             <Separator className="flex-1 bg-[#1a1a1a]" />
           </div>
 
-          {/* Email/Password Form */}
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSkipToSubscription(); }}>
+          {/* Sign Up Form */}
+          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSignUp(); }}>
+            <div>
+              <Label htmlFor="fullname" className="text-gray-300 mb-2 block">
+                Full Name
+              </Label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  id="fullname"
+                  type="text"
+                  placeholder="Xuan Mai"
+                  className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                />
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="email" className="text-gray-300 mb-2 block">
                 Email
@@ -147,25 +164,58 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                  className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 pr-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a]" />
-                Remember me
+            <div>
+              <Label htmlFor="confirmPassword" className="text-gray-300 mb-2 block">
+                Confirm Password
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 pr-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm">
+              <input type="checkbox" className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a]" />
+              <label className="text-gray-400 cursor-pointer">
+                I agree to the{' '}
+                <button type="button" onClick={() => {/* TODO: Handle terms click */}} className="text-[#00ff88] hover:underline">
+                  Terms & Privacy Policy
+                </button>
               </label>
-              <button 
-                type="button"
-                onClick={onForgotPassword}
-                className="text-[#00ff88] hover:underline"
-              >
-                Forgot password?
-              </button>
             </div>
 
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -173,16 +223,16 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
                 type="submit"
                 className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl"
               >
-                Log In
+                Create Account
               </Button>
             </motion.div>
           </form>
 
-          {/* Sign Up Link */}
+          {/* Login Link */}
           <p className="text-center text-gray-400 text-sm mt-6">
-            Don't have an account?{' '}
-            <button onClick={onSkipToSubscription} className="text-[#00ff88] hover:underline">
-              Sign up
+            Already have an account?{' '}
+            <button onClick={onNavigateToLogin} className="text-[#00ff88] hover:underline">
+              Sign in
             </button>
           </p>
         </div>
