@@ -85,7 +85,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
   ];
 
   return (
-    <ScrollArea className="flex-1 h-full">
+    <ScrollArea className="flex-1 h-full bg-black">
       <div className="p-8">
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="bg-transparent border-b border-[#1a1a1a] rounded-none p-0 h-auto gap-8 mb-8">

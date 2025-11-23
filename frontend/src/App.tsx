@@ -5,12 +5,14 @@ import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { HomePage } from './components/HomePage';
+import { LeftSidebar } from './components/LeftSidebar';
 
 type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
   const [resetMode, setResetMode] = useState<'reset' | 'verify'>('verify');
+  const [currentPage, setCurrentPage] = useState<string>('home');
 
   const handleLogin = () => {
     console.log('Login clicked');
@@ -30,6 +32,7 @@ function App() {
     console.log(`Selected plan: ${plan}`);
     // TODO: Implement plan selection logic (API call, save to database, etc.)
     // After selecting plan, navigate to home page
+    setCurrentPage('home');
     setCurrentView('home');
   };
 
@@ -40,7 +43,20 @@ function App() {
     if (page === 'playlist' || page === 'artist') {
       // TODO: Navigate to playlist/artist detail page when implemented
       console.log(`Navigate to ${page}:`, data);
+    } else {
+      // Update current page for sidebar navigation
+      setCurrentPage(page);
     }
+  };
+
+  const handleSidebarNavigate = (page: string) => {
+    setCurrentPage(page);
+    // TODO: Implement navigation to different pages (search, library, etc.)
+    // For now, if navigating to home, ensure we're on home view
+    if (page === 'home' && currentView !== 'home') {
+      setCurrentView('home');
+    }
+    console.log(`Sidebar navigation to: ${page}`);
   };
 
   const handleNavigateToSignUp = () => {
@@ -122,9 +138,17 @@ function App() {
         );
       case 'home':
         return (
-          <HomePage 
-            onNavigate={handleNavigate}
-          />
+          <div className="flex h-screen bg-black overflow-hidden">
+            <LeftSidebar 
+              onNavigate={handleSidebarNavigate}
+              currentPage={currentPage}
+            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <HomePage 
+                onNavigate={handleNavigate}
+              />
+            </div>
+          </div>
         );
       default:
         return (
