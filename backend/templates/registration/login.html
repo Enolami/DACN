@@ -4,11 +4,15 @@
 <form method="post">
   {% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">Log In adfadf</button>
+  <button type="submit">Log In</button>
 </form>
 <p><a href="{% url 'password_reset' %}">Forgot password?</a></p>
 
+{% get_providers as socialaccount_providers %}
+{% if socialaccount_providers %}
 <hr>
 <h3>Or log in with:</h3>
-<a href="{% provider_login_url 'google' %}">Login with Google</a><br>
-<a href="{% provider_login_url 'github' %}">Login with GitHub</a>
+{% for provider in socialaccount_providers %}
+  <a href="{% provider_login_url provider.id process='login' %}">Login with {{ provider.name }}</a><br>
+{% endfor %}
+{% endif %}

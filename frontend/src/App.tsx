@@ -6,6 +6,7 @@ import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { HomePage } from './components/HomePage';
 import { LeftSidebar } from './components/LeftSidebar';
+import { RightPanel } from './components/RightPanel';
 
 type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home';
 
@@ -148,6 +149,7 @@ function App() {
                 onNavigate={handleNavigate}
               />
             </div>
+            <RightPanel />
           </div>
         );
       default:
