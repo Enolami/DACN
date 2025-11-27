@@ -7,13 +7,16 @@ import { SubscriptionPage } from './components/SubscriptionPage';
 import { HomePage } from './components/HomePage';
 import { LeftSidebar } from './components/LeftSidebar';
 import { RightPanel } from './components/RightPanel';
+import { TopNavigation } from './components/TopNavigation';
+import { ArtistProfile } from './components/ArtistProfile';
 
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home';
+type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
   const [resetMode, setResetMode] = useState<'reset' | 'verify'>('verify');
   const [currentPage, setCurrentPage] = useState<string>('home');
+  const [selectedArtist, setSelectedArtist] = useState<any>(null);
 
   const handleLogin = () => {
     console.log('Login clicked');
@@ -41,9 +44,14 @@ function App() {
     console.log(`Navigating to: ${page}`, data);
     // TODO: Implement navigation logic for different pages
     // For now, handle basic navigation
-    if (page === 'playlist' || page === 'artist') {
-      // TODO: Navigate to playlist/artist detail page when implemented
+    if (page === 'playlist') {
+      // TODO: Navigate to playlist detail page when implemented
       console.log(`Navigate to ${page}:`, data);
+    } else if (page === 'artist') {
+      // Navigate to artist profile
+      setSelectedArtist(data);
+      setCurrentView('artist-profile');
+      setCurrentPage('artist');
     } else {
       // Update current page for sidebar navigation
       setCurrentPage(page);
@@ -145,9 +153,35 @@ function App() {
               currentPage={currentPage}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
+              <TopNavigation 
+                onNavigate={handleNavigate}
+                currentPage={currentPage}
+              />
               <HomePage 
                 onNavigate={handleNavigate}
               />
+            </div>
+            <RightPanel />
+          </div>
+        );
+      case 'artist-profile':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden">
+            <LeftSidebar 
+              onNavigate={handleSidebarNavigate}
+              currentPage={currentPage}
+            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <TopNavigation 
+                onNavigate={handleNavigate}
+                currentPage={currentPage}
+              />
+              {selectedArtist && (
+                <ArtistProfile 
+                  artist={selectedArtist}
+                  onNavigate={handleNavigate}
+                />
+              )}
             </div>
             <RightPanel />
           </div>

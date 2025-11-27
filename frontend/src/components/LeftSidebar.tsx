@@ -1,4 +1,4 @@
-import { Home, Search, Library, Heart, Mic2, Disc3, User, ListMusic } from 'lucide-react';
+import { Home, Library, Heart, Mic2, Disc3, User, ListMusic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
@@ -14,7 +14,6 @@ export function LeftSidebar({ onNavigate, currentPage }: LeftSidebarProps) {
 
   const mainNavItems = [
     { icon: Home, label: 'Home', page: 'home' },
-    { icon: Search, label: 'Search', page: 'search' },
   ];
 
   const libraryItems = [
