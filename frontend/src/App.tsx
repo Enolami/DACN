@@ -6,17 +6,23 @@ import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { HomePage } from './components/HomePage';
 import { LeftSidebar } from './components/LeftSidebar';
+
 import { RightPanel } from './components/RightPanel';
 import { TopNavigation } from './components/TopNavigation';
 import { ArtistProfile } from './components/ArtistProfile';
+import { PlaylistDetail } from './components/PlaylistDetail';
+import { LibraryPage } from './components/LibraryPage';
 
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile';
+type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'playlist-detail' | 'library-page';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
   const [resetMode, setResetMode] = useState<'reset' | 'verify'>('verify');
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [selectedArtist, setSelectedArtist] = useState<any>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
+  const [libraryCategory, setLibraryCategory] = useState<'playlists' | 'songs' | 'podcasts' | 'artists' | 'albums'>('playlists');
+  
 
   const handleLogin = () => {
     console.log('Login clicked');
@@ -46,13 +52,17 @@ function App() {
     // For now, handle basic navigation
     if (page === 'playlist') {
       // TODO: Navigate to playlist detail page when implemented
+      setSelectedPlaylist(data);
+      setCurrentView('playlist-detail');
+      setCurrentPage('playlist');
       console.log(`Navigate to ${page}:`, data);
     } else if (page === 'artist') {
       // Navigate to artist profile
       setSelectedArtist(data);
       setCurrentView('artist-profile');
       setCurrentPage('artist');
-    } else {
+    }
+    else {
       // Update current page for sidebar navigation
       setCurrentPage(page);
     }
@@ -64,7 +74,28 @@ function App() {
     // For now, if navigating to home, ensure we're on home view
     if (page === 'home' && currentView !== 'home') {
       setCurrentView('home');
+    } else if (page === 'library') {
+      // Navigate to library-page with playlists category
+      setLibraryCategory('playlists');
+      setCurrentView('library-page');
+    } else if (page === 'liked') {
+      // Navigate to library-page with songs category
+      setLibraryCategory('songs');
+      setCurrentView('library-page');
+    } else if (page === 'podcasts') {
+      // Navigate to library-page with podcasts category
+      setLibraryCategory('podcasts');
+      setCurrentView('library-page');
+    } else if (page === 'artists') {
+      // Navigate to library-page with artists category
+      setLibraryCategory('artists');
+      setCurrentView('library-page');
+    } else if (page === 'albums') {
+      // Navigate to library-page with albums category
+      setLibraryCategory('albums');
+      setCurrentView('library-page');
     }
+    
     console.log(`Sidebar navigation to: ${page}`);
   };
 
@@ -182,6 +213,47 @@ function App() {
                   onNavigate={handleNavigate}
                 />
               )}
+            </div>
+            <RightPanel />
+          </div>
+        );
+      case 'playlist-detail':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden">
+            <LeftSidebar 
+              onNavigate={handleSidebarNavigate}
+              currentPage={currentPage}
+            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <TopNavigation 
+                onNavigate={handleNavigate}
+                currentPage={currentPage}
+              />
+              {selectedPlaylist && (
+                <PlaylistDetail 
+                  playlist={selectedPlaylist}
+                />
+              )}
+            </div>
+            <RightPanel />
+          </div>
+        );
+      case 'library-page':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden">
+            <LeftSidebar 
+              onNavigate={handleSidebarNavigate}
+              currentPage={currentPage}
+            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <TopNavigation 
+                onNavigate={handleNavigate}
+                currentPage={currentPage}
+              />
+              <LibraryPage 
+                onNavigate={handleNavigate}
+                category={libraryCategory}
+              />
             </div>
             <RightPanel />
           </div>
