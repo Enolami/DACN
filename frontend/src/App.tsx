@@ -7,13 +7,15 @@ import { SubscriptionPage } from './components/SubscriptionPage';
 import { HomePage } from './components/HomePage';
 import { LeftSidebar } from './components/LeftSidebar';
 
-import { RightPanel } from './components/RightPanel';
+import { RightPanel } from './components/RightPanel'; 
 import { TopNavigation } from './components/TopNavigation';
 import { ArtistProfile } from './components/ArtistProfile';
 import { PlaylistDetail } from './components/PlaylistDetail';
 import { LibraryPage } from './components/LibraryPage';
+import { MusicPlayer } from './components/MusicPlayer';
+import { SongDetail } from './components/SongDetail';
 
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'playlist-detail' | 'library-page';
+type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'playlist-detail' | 'library-page' | 'song-detail';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
@@ -21,7 +23,14 @@ function App() {
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [selectedArtist, setSelectedArtist] = useState<any>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
+  const [selectedSong, setSelectedSong] = useState<any>(null);
   const [libraryCategory, setLibraryCategory] = useState<'playlists' | 'songs' | 'podcasts' | 'artists' | 'albums'>('playlists');
+  const [currentSong, setCurrentSong] = useState<any>({
+    title: 'Cosmic Waves',
+    artist: 'Nova Pulse',
+    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100',
+    duration: 222,
+  });
   
 
   const handleLogin = () => {
@@ -61,6 +70,11 @@ function App() {
       setSelectedArtist(data);
       setCurrentView('artist-profile');
       setCurrentPage('artist');
+    } else if (page === 'song') {
+      // Navigate to song detail
+      setSelectedSong(data);
+      setCurrentView('song-detail');
+      setCurrentPage('song');
     }
     else {
       // Update current page for sidebar navigation
@@ -178,84 +192,122 @@ function App() {
         );
       case 'home':
         return (
-          <div className="flex h-screen bg-black overflow-hidden">
-            <LeftSidebar 
-              onNavigate={handleSidebarNavigate}
-              currentPage={currentPage}
-            />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <TopNavigation 
-                onNavigate={handleNavigate}
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
                 currentPage={currentPage}
               />
-              <HomePage 
-                onNavigate={handleNavigate}
-              />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
+                  onNavigate={handleNavigate}
+                  currentPage={currentPage}
+                />
+                <HomePage 
+                  onNavigate={handleNavigate}
+                />
+              </div>
+              <RightPanel />
             </div>
-            <RightPanel />
+            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
           </div>
         );
       case 'artist-profile':
         return (
-          <div className="flex h-screen bg-black overflow-hidden">
-            <LeftSidebar 
-              onNavigate={handleSidebarNavigate}
-              currentPage={currentPage}
-            />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <TopNavigation 
-                onNavigate={handleNavigate}
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
                 currentPage={currentPage}
               />
-              {selectedArtist && (
-                <ArtistProfile 
-                  artist={selectedArtist}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
                   onNavigate={handleNavigate}
+                  currentPage={currentPage}
                 />
-              )}
+                {selectedArtist && (
+                  <ArtistProfile 
+                    artist={selectedArtist}
+                    onNavigate={handleNavigate}
+                  />
+                )}
+              </div>
+              <RightPanel />
             </div>
-            <RightPanel />
+            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
           </div>
         );
       case 'playlist-detail':
         return (
-          <div className="flex h-screen bg-black overflow-hidden">
-            <LeftSidebar 
-              onNavigate={handleSidebarNavigate}
-              currentPage={currentPage}
-            />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <TopNavigation 
-                onNavigate={handleNavigate}
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
                 currentPage={currentPage}
               />
-              {selectedPlaylist && (
-                <PlaylistDetail 
-                  playlist={selectedPlaylist}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
+                  onNavigate={handleNavigate}
+                  currentPage={currentPage}
                 />
-              )}
+                {selectedPlaylist && (
+                  <PlaylistDetail 
+                    playlist={selectedPlaylist}
+                    onNavigate={handleNavigate}
+                  />
+                )}
+              </div>
+              <RightPanel />
             </div>
-            <RightPanel />
+            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
           </div>
         );
       case 'library-page':
         return (
-          <div className="flex h-screen bg-black overflow-hidden">
-            <LeftSidebar 
-              onNavigate={handleSidebarNavigate}
-              currentPage={currentPage}
-            />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <TopNavigation 
-                onNavigate={handleNavigate}
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
                 currentPage={currentPage}
               />
-              <LibraryPage 
-                onNavigate={handleNavigate}
-                category={libraryCategory}
-              />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
+                  onNavigate={handleNavigate}
+                  currentPage={currentPage}
+                />
+                <LibraryPage 
+                  onNavigate={handleNavigate}
+                  category={libraryCategory}
+                />
+              </div>
+              <RightPanel />
             </div>
-            <RightPanel />
+            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
+          </div>
+        );
+      case 'song-detail':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
+                currentPage={currentPage}
+              />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
+                  onNavigate={handleNavigate}
+                  currentPage={currentPage}
+                />
+                {selectedSong && (
+                  <SongDetail 
+                    song={selectedSong}
+                    onNavigate={handleNavigate}
+                  />
+                )}
+              </div>
+              <RightPanel />
+            </div>
+            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
           </div>
         );
       default:

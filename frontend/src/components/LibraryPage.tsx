@@ -586,6 +586,13 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
                   whileHover={{ backgroundColor: 'rgba(26, 26, 26, 0.5)' }}
+                  onClick={() => onNavigate('song', {
+                    title: song.title,
+                    artist: song.artist,
+                    album: song.album,
+                    imageUrl: song.imageUrl,
+                    duration: song.duration,
+                  })}
                   className="grid grid-cols-[48px_1fr_1fr_80px_48px_48px] gap-4 px-4 py-3 rounded-lg cursor-pointer group items-center"
                 >
                   {/* Song Cover */}

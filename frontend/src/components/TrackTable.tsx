@@ -13,9 +13,20 @@ interface Track {
 
 interface TrackTableProps {
   tracks: Track[];
+  onNavigate?: (page: string, data?: any) => void;
 }
 
-export function TrackTable({ tracks }: TrackTableProps) {
+export function TrackTable({ tracks, onNavigate }: TrackTableProps) {
+  const handleTrackClick = (track: Track) => {
+    if (onNavigate) {
+      onNavigate('song', {
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+      });
+    }
+  };
   return (
     <div className="w-full">
       {/* Table Header */}
@@ -36,6 +47,7 @@ export function TrackTable({ tracks }: TrackTableProps) {
           <motion.div
             key={index}
             whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+            onClick={() => handleTrackClick(track)}
             className="grid grid-cols-[40px_1fr_1fr_1fr_80px_60px] gap-4 px-4 py-3 rounded-lg cursor-pointer group"
           >
             {/* Track Number / Play Button */}
@@ -71,13 +83,19 @@ export function TrackTable({ tracks }: TrackTableProps) {
               <Button
                 size="icon"
                 variant="ghost"
+                onClick={(e) => e.stopPropagation()}
                 className={`w-8 h-8 ${
                   track.liked ? 'text-[#00ff88]' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <Heart className={`w-4 h-4 ${track.liked ? 'fill-[#00ff88]' : ''}`} />
               </Button>
-              <Button size="icon" variant="ghost" className="w-8 h-8 text-gray-400 hover:text-white">
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                onClick={(e) => e.stopPropagation()}
+                className="w-8 h-8 text-gray-400 hover:text-white"
+              >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </div>

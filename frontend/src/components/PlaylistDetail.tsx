@@ -1,5 +1,5 @@
 import { ImageWithFallback } from './img/ImageWithFallback';
-import { Play, Heart, Download, Share2, MoreHorizontal, Clock } from 'lucide-react';
+import { Play, Heart, Download, Share2, MoreHorizontal } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { TrackTable } from './TrackTable';
@@ -13,9 +13,10 @@ interface PlaylistDetailProps {
     description: string;
     imageUrl: string;
   };
+  onNavigate?: (page: string, data?: any) => void;
 }
 
-export function PlaylistDetail({ playlist }: PlaylistDetailProps) {
+export function PlaylistDetail({ playlist, onNavigate }: PlaylistDetailProps) {
   // All available tracks
   const allTracks = [
     { number: 1, title: 'Cosmic Waves', artist: 'Nova Pulse', album: 'Interstellar', duration: '3:42', liked: true },
@@ -141,7 +142,7 @@ export function PlaylistDetail({ playlist }: PlaylistDetailProps) {
 
       {/* Track Table */}
       <div className="px-8 pb-8">
-        <TrackTable tracks={tracks} />
+        <TrackTable tracks={tracks} onNavigate={onNavigate} />
       </div>
 
       {/* AI Recommendations */}

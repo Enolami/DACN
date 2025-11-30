@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { motion } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,9 +28,10 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
   const [currentLyricIndex, setCurrentLyricIndex] = useState(0);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationIdRef = useRef<number | null>(null);
 
-  // Mock lyrics data
-  const lyrics = [
+  // Mock lyrics data - memoized to prevent recreation on every render
+  const lyrics = useMemo(() => [
     { time: 0, text: "Lost in the neon glow" },
     { time: 3, text: "Dancing through the night" },
     { time: 6, text: "Feeling the rhythm flow" },
@@ -39,7 +40,7 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
     { time: 15, text: "With electric hearts tonight" },
     { time: 18, text: "We're alive, we're free" },
     { time: 21, text: "Lost in this melody" },
-  ];
+  ], []);
 
   // Simulate lyric progression
   useEffect(() => {
@@ -47,7 +48,7 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
       setCurrentLyricIndex((prev) => (prev + 1) % lyrics.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [lyrics.length]);
 
   // Visualizer animation
   useEffect(() => {
@@ -60,7 +61,6 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    let animationId: number;
     let time = 0;
 
     const animate = () => {
@@ -85,12 +85,16 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
       }
 
       time += 0.05;
-      animationId = requestAnimationFrame(animate);
+      animationIdRef.current = requestAnimationFrame(animate);
     };
 
     animate();
 
-    return () => cancelAnimationFrame(animationId);
+    return () => {
+      if (animationIdRef.current !== null) {
+        cancelAnimationFrame(animationIdRef.current);
+      }
+    };
   }, []);
 
   const moods = ['Chill', 'Night Drive', 'Synthwave', 'Dreamy', 'Energetic'];
