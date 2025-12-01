@@ -1,5 +1,5 @@
 import { ImageWithFallback } from './img/ImageWithFallback';
-import { Play, Heart, Share2, MoreHorizontal, UserPlus, BadgeCheck, Music2, Disc3, Video, Info } from 'lucide-react';
+import { Play, Heart, Share2, MoreHorizontal, UserPlus, BadgeCheck, Music2, Disc3, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ArtistCard } from './ArtistCard';
@@ -200,7 +200,12 @@ export function ArtistProfile({ artist, onNavigate }: ArtistProfileProps) {
                     key={index}
                     whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
                     className="flex items-center gap-5 p-4 rounded-xl cursor-pointer group"
-                    onClick={() => onNavigate?.('song', { title: track.title, artist: artist.name, imageUrl: track.imageUrl })}
+                    onClick={() => onNavigate?.('song', { 
+                      title: track.title, 
+                      artist: artist.name, 
+                      imageUrl: track.imageUrl,
+                      duration: track.duration
+                    })}
                   >
                     <div className="w-10 text-center">
                       <span className="text-gray-400 group-hover:hidden">{index + 1}</span>
@@ -234,7 +239,12 @@ export function ArtistProfile({ artist, onNavigate }: ArtistProfileProps) {
                     <span className="text-gray-400 w-16 text-right">{track.duration}</span>
                     
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="ghost" className="w-10 h-10 text-gray-400 hover:text-[#ec4899]">
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-10 h-10 text-gray-400 hover:text-[#ec4899]"
+                      >
                         <Heart className="w-5 h-5" />
                       </Button>
                     </div>
@@ -249,7 +259,21 @@ export function ArtistProfile({ artist, onNavigate }: ArtistProfileProps) {
               <p className="text-gray-400 mb-6">Based on what you listen to</p>
               <div className="grid grid-cols-4 gap-8">
                 {relatedArtists.map((relatedArtist, index) => (
-                  <ArtistCard key={index} {...relatedArtist} />
+                  <div
+                    key={index}
+                    onClick={() => {
+                      if (onNavigate) {
+                        onNavigate('artist', {
+                          name: relatedArtist.name,
+                          genre: relatedArtist.genre,
+                          imageUrl: relatedArtist.imageUrl,
+                        });
+                      }
+                    }}
+                    className="cursor-pointer w-full"
+                  >
+                    <ArtistCard {...relatedArtist} />
+                  </div>
                 ))}
               </div>
             </div>

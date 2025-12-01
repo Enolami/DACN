@@ -27,6 +27,16 @@ export function TrackTable({ tracks, onNavigate }: TrackTableProps) {
       });
     }
   };
+
+  const handleArtistClick = (e: React.MouseEvent, artistName: string) => {
+    e.stopPropagation();
+    if (onNavigate) {
+      onNavigate('artist', {
+        name: artistName,
+        genre: 'Electronic',
+      });
+    }
+  };
   return (
     <div className="w-full">
       {/* Table Header */}
@@ -65,7 +75,12 @@ export function TrackTable({ tracks, onNavigate }: TrackTableProps) {
 
             {/* Artist */}
             <div className="flex items-center min-w-0">
-              <span className="text-gray-400 truncate">{track.artist}</span>
+              <span 
+                onClick={(e) => handleArtistClick(e, track.artist)}
+                className="text-gray-400 truncate cursor-pointer hover:text-[#00ff88] transition-colors"
+              >
+                {track.artist}
+              </span>
             </div>
 
             {/* Album */}

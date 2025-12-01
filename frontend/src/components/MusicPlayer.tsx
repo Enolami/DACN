@@ -28,6 +28,16 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong }: MusicPla
       });
     }
   };
+
+  const handleArtistClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onNavigate && song) {
+      onNavigate('artist', {
+        name: song.artist,
+        genre: 'Electronic',
+      });
+    }
+  };
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState([45]);
   const [volume, setVolume] = useState([75]);
@@ -119,7 +129,7 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong }: MusicPla
             {song.title}
           </h4>
           <p 
-            onClick={handleSongClick}
+            onClick={handleArtistClick}
             className="text-gray-400 text-xs truncate cursor-pointer hover:text-[#00ff88] transition-colors"
           >
             {song.artist}

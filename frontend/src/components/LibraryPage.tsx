@@ -392,6 +392,11 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
               <motion.div
                 key={index}
                 whileHover={{ scale: 1.05 }}
+                onClick={() => onNavigate('artist', {
+                  name: artist.name,
+                  genre: 'Electronic',
+                  imageUrl: artist.imageUrl,
+                })}
                 className="group cursor-pointer"
               >
                 <div className="relative bg-[#1a1a1a] rounded-full overflow-hidden mb-4 aspect-square">
@@ -616,7 +621,18 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
                     <h4 className="text-white truncate group-hover:text-[#00ff88] transition-colors">
                       {song.title}
                     </h4>
-                    <p className="text-gray-400 text-sm truncate">{song.artist}</p>
+                    <p 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigate('artist', {
+                          name: song.artist,
+                          genre: 'Electronic',
+                        });
+                      }}
+                      className="text-gray-400 text-sm truncate cursor-pointer hover:text-[#00ff88] transition-colors"
+                    >
+                      {song.artist}
+                    </p>
                   </div>
 
                   {/* Album */}
