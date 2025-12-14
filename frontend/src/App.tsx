@@ -9,8 +9,9 @@ import { LeftSidebar } from './components/Login/LeftSidebar';
 import { RightPanel } from './components/Login/RightPanel';
 import { TopNavigation } from './components/Login/TopNavigation';
 import { ArtistProfile } from './components/Login/ArtistProfile';
+import { ProfilePage } from './components/Profile/ProfilePage';
 
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile';
+type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'profile';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
@@ -57,6 +58,10 @@ function App() {
       setSelectedArtist(data);
       setCurrentView('artist-profile');
       setCurrentPage('artist');
+    } else if (page === 'profile') {
+      // Navigate to user profile
+      setCurrentView('profile');
+      setCurrentPage('profile');
     } else {
       // Update current page for sidebar navigation
       setCurrentPage(page);
@@ -187,6 +192,25 @@ function App() {
                   onNavigate={handleNavigate}
                 />
               )}
+            </div>
+            <RightPanel />
+          </div>
+        );
+      case 'profile':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden">
+            <LeftSidebar 
+              onNavigate={handleSidebarNavigate}
+              currentPage={currentPage}
+            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <TopNavigation 
+                onNavigate={handleNavigate}
+                currentPage={currentPage}
+              />
+              <ProfilePage 
+                onNavigate={handleNavigate}
+              />
             </div>
             <RightPanel />
           </div>
