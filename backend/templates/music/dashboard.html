@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music API Tester</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+        .section { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
+        button { cursor: pointer; padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        input { padding: 5px; }
+        code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🎵 Music API Dashboard</h1>
+    <p>Logged in as: <strong>{{ request.user.username }}</strong></p>
+
+    <!-- 1. JAMENDO SEARCH -->
+    <div class="section">
+        <h2>1. Jamendo Search</h2>
+        <input type="text" id="searchTerm" placeholder="e.g. Rock, Jazz">
+        <button onclick="searchJamendo()">Search</button>
+        <div id="searchResults" style="margin-top: 10px;"></div>
+    </div>
+
+    <!-- 2. LOCAL TRACKS & STREAMING -->
+    <div class="section">
+        <h2>2. Your Tracks (Stream & Analyze)</h2>
+        <button onclick="loadTracks()">Refresh Track List</button>
+        <ul id="trackList"></ul>
+    </div>
+
+    <!-- 3. JSON OUTPUT -->
+    <div class="section">
+        <h3>Debug Output</h3>
+        <pre id="output" style="background:#333; color:#fff; padding:10px; overflow-x:auto;">Ready...</pre>
+    </div>
+
+    <script>
+        // Use relative path since we are serving from the same domain
+        const BASE_URL = '/music'; 
+
+        function log(data) {
+            document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function getHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            };
+        }
+
+        async function searchJamendo() {
+            const query = document.getElementById('searchTerm').value;
+            try {
+                const res = await fetch(`${BASE_URL}/jamendo/search/?q=${query}`, {
+                    headers: getHeaders()
+                });
+                const data = await res.json();
+                log(data);
+                
+                const container = document.getElementById('searchResults');
+                container.innerHTML = '';
+                if(data.results) {
+                    data.results.forEach(track => {
+                        const div = document.createElement('div');
+                        div.style.marginBottom = '5px';
+                        div.innerHTML = `
+                            <strong>${track.name}</strong> by ${track.artist_name} 
+                            <button onclick="importTrack('${track.id}')">Import This</button>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                     container.innerHTML = `<span class="error">${JSON.stringify(data)}</span>`;
+                }
+            } catch (err) { log(err); }
+        }
+
+        async function importTrack(jamendoId) {
+            log({status: "Importing...", id: jamendoId});
+            try {
+                const res = await fetch(`${BASE_URL}/jamendo/import/`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ id: jamendoId })
+                });
+                const data = await res.json();
+                log(data);
+                loadTracks();
+            } catch (err) { log(err); }
+        }
+
+        async function loadTracks() {
+            try {
+                const res = await fetch(`${BASE_URL}/tracks/`, { headers: getHeaders() });
+                const data = await res.json();
+                
+                const list = document.getElementById('trackList');
+                list.innerHTML = '';
+                
+                if (Array.isArray(data)) {
+                    data.forEach(track => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <strong>${track.title}</strong> 
+                            <br>
+                            <audio controls src="${BASE_URL}/stream/${track.id}/" style="height: 30px; margin-top:5px;"></audio>
+                            <br>
+                            Status: ${track.is_processed ? '<span class="success">Analyzed</span>' : '<span class="error">Pending</span>'}
+                            ${!track.is_processed ? `<button onclick="analyzeTrack(${track.id})">Run MFCC</button>` : ''}
+                            <hr>
+                        `;
+                        list.appendChild(li);
+                    });
+                } else {
+                    log(data);
+                }
+            } catch (err) { log(err); }
+        }
+
+        async function analyzeTrack(id) {
+            log({status: "Analyzing...", id: id});
+            try {
+                const res = await fetch(`${BASE_URL}/tracks/${id}/analyze/`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const data = await res.json();
+                log(data);
+                loadTracks();
+            } catch (err) { log(err); }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
