@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
-import { LoginPage } from './components/LoginPage';
-import { SignUpPage } from './components/SignUpPage';
-import { ForgotPasswordPage } from './components/ForgotPasswordPage';
-import { ResetPasswordPage } from './components/ResetPasswordPage';
-import { SubscriptionPage } from './components/SubscriptionPage';
-import { HomePage } from './components/HomePage';
-import { LeftSidebar } from './components/LeftSidebar';
+import { LoginPage } from './components/Login/LoginPage';
+import { SignUpPage } from './components/Login/SignUpPage';
+import { ForgotPasswordPage } from './components/Login/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/Login/ResetPasswordPage';
+import { SubscriptionPage } from './components/Login/SubscriptionPage';
+import { HomePage } from './components/Login/HomePage';
+import { LeftSidebar } from './components/Login/LeftSidebar';
+import { RightPanel } from './components/Login/RightPanel';
+import { TopNavigation } from './components/Login/TopNavigation';
+import { ArtistProfile } from './components/Login/ArtistProfile';
+import { ProfilePage } from './components/Profile/ProfilePage';
+import { PlaylistDetail } from './components/Login/PlaylistDetail';
+import { LibraryPage } from './components/Login/LibraryPage';
+import { SongDetail } from './components/Login/SongDetail';
+import { MusicPlayer } from './components/Login/MusicPlayer';
+import { NowPlayingFullscreen } from './components/Login/NowPlayingFullscreen';
 
-import { RightPanel } from './components/RightPanel'; 
-import { TopNavigation } from './components/TopNavigation';
-import { ArtistProfile } from './components/ArtistProfile';
-import { PlaylistDetail } from './components/PlaylistDetail';
-import { LibraryPage } from './components/LibraryPage';
-import { MusicPlayer } from './components/MusicPlayer';
-import { SongDetail } from './components/SongDetail';
-
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'playlist-detail' | 'library-page' | 'song-detail';
+type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
@@ -24,20 +25,26 @@ function App() {
   const [selectedArtist, setSelectedArtist] = useState<any>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
   const [selectedSong, setSelectedSong] = useState<any>(null);
-  const [libraryCategory, setLibraryCategory] = useState<'playlists' | 'songs' | 'podcasts' | 'artists' | 'albums'>('playlists');
+  const [showNowPlaying, setShowNowPlaying] = useState(false);
+  // Current playing song - shared across app
   const [currentSong, setCurrentSong] = useState<any>({
-    title: 'Cosmic Waves',
-    artist: 'Nova Pulse',
-    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100',
-    duration: 222,
+    title: 'Neon Dreams',
+    artist: 'Cyber Pulse',
+    album: 'Digital Horizons',
+    duration: '3:42',
+    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100'
   });
-  
 
-  const handleLogin = () => {
-    console.log('Login clicked');
-    // TODO: Implement login logic (API call, validation, etc.)
-    // After successful login, navigate to subscription page
-    setCurrentView('subscription');
+  const handleLogin = (token?: string) => {
+  console.log('Login successful with token:', token);
+  
+  // Store the token (e.g., in localStorage)
+  if (token) {
+    localStorage.setItem('authToken', token);
+  }
+  
+  // Navigate to subscription or home
+  setCurrentView('subscription');
   };
 
   const handleSignUp = () => {
@@ -60,11 +67,10 @@ function App() {
     // TODO: Implement navigation logic for different pages
     // For now, handle basic navigation
     if (page === 'playlist') {
-      // TODO: Navigate to playlist detail page when implemented
+      // Navigate to playlist detail page
       setSelectedPlaylist(data);
-      setCurrentView('playlist-detail');
+      setCurrentView('playlist');
       setCurrentPage('playlist');
-      console.log(`Navigate to ${page}:`, data);
     } else if (page === 'artist') {
       // Navigate to artist profile
       setSelectedArtist(data);
@@ -73,43 +79,35 @@ function App() {
     } else if (page === 'song') {
       // Navigate to song detail
       setSelectedSong(data);
-      setCurrentView('song-detail');
+      setCurrentSong(data); // Update current playing song
+      setCurrentView('song');
       setCurrentPage('song');
-    }
-    else {
+    } else if (page === 'profile') {
+      // Navigate to user profile
+      setCurrentView('profile');
+      setCurrentPage('profile');
+    } else {
       // Update current page for sidebar navigation
       setCurrentPage(page);
     }
   };
 
+  const handleExpandPlayer = () => {
+    // Open Now Playing Fullscreen
+    setShowNowPlaying(true);
+  };
+
   const handleSidebarNavigate = (page: string) => {
     setCurrentPage(page);
-    // TODO: Implement navigation to different pages (search, library, etc.)
-    // For now, if navigating to home, ensure we're on home view
+    // Handle navigation to different pages
     if (page === 'home' && currentView !== 'home') {
       setCurrentView('home');
-    } else if (page === 'library') {
-      // Navigate to library-page with playlists category
-      setLibraryCategory('playlists');
-      setCurrentView('library-page');
-    } else if (page === 'liked') {
-      // Navigate to library-page with songs category
-      setLibraryCategory('songs');
-      setCurrentView('library-page');
-    } else if (page === 'podcasts') {
-      // Navigate to library-page with podcasts category
-      setLibraryCategory('podcasts');
-      setCurrentView('library-page');
-    } else if (page === 'artists') {
-      // Navigate to library-page with artists category
-      setLibraryCategory('artists');
-      setCurrentView('library-page');
-    } else if (page === 'albums') {
-      // Navigate to library-page with albums category
-      setLibraryCategory('albums');
-      setCurrentView('library-page');
+    } else if (page === 'library' || page === 'liked' || page === 'artists' || page === 'albums') {
+      // For library pages, stay in home view but show LibraryPage
+      if (currentView !== 'home') {
+        setCurrentView('home');
+      }
     }
-    
     console.log(`Sidebar navigation to: ${page}`);
   };
 
@@ -151,7 +149,7 @@ function App() {
       case 'login':
         return (
           <LoginPage 
-            onLogin={handleLogin}
+            onLogin={handleLogin} // This now accepts the token passed from LoginPage
             onSkipToSubscription={handleNavigateToSignUp}
             onForgotPassword={handleNavigateToForgotPassword}
           />
@@ -191,6 +189,26 @@ function App() {
           />
         );
       case 'home':
+        // Determine which page to show based on currentPage
+        const renderContent = () => {
+          if (currentPage === 'library' || currentPage === 'liked' || currentPage === 'artists' || currentPage === 'albums') {
+            // Map page to category
+            const categoryMap: Record<string, 'playlists' | 'songs' | 'artists' | 'albums'> = {
+              'library': 'playlists',
+              'liked': 'songs',
+              'artists': 'artists',
+              'albums': 'albums',
+            };
+            return (
+              <LibraryPage 
+                onNavigate={handleNavigate}
+                category={categoryMap[currentPage] || 'playlists'}
+              />
+            );
+          }
+          return <HomePage onNavigate={handleNavigate} />;
+        };
+
         return (
           <div className="flex h-screen bg-black overflow-hidden flex-col">
             <div className="flex flex-1 overflow-hidden">
@@ -203,13 +221,15 @@ function App() {
                   onNavigate={handleNavigate}
                   currentPage={currentPage}
                 />
-                <HomePage 
-                  onNavigate={handleNavigate}
-                />
+                {renderContent()}
               </div>
-              <RightPanel />
+              <RightPanel onNavigate={handleNavigate} />
             </div>
-            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
+            <MusicPlayer 
+              onNavigate={handleNavigate}
+              onExpandClick={handleExpandPlayer}
+              currentSong={currentSong}
+            />
           </div>
         );
       case 'artist-profile':
@@ -232,12 +252,42 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel />
+              <RightPanel onNavigate={handleNavigate} />
             </div>
-            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
+            <MusicPlayer 
+              onNavigate={handleNavigate}
+              onExpandClick={handleExpandPlayer}
+              currentSong={currentSong}
+            />
           </div>
         );
-      case 'playlist-detail':
+      case 'profile':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
+                currentPage={currentPage}
+              />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
+                  onNavigate={handleNavigate}
+                  currentPage={currentPage}
+                />
+                <ProfilePage 
+                  onNavigate={handleNavigate}
+                />
+              </div>
+              <RightPanel onNavigate={handleNavigate} />
+            </div>
+            <MusicPlayer 
+              onNavigate={handleNavigate}
+              onExpandClick={handleExpandPlayer}
+              currentSong={currentSong}
+            />
+          </div>
+        );
+      case 'playlist':
         return (
           <div className="flex h-screen bg-black overflow-hidden flex-col">
             <div className="flex flex-1 overflow-hidden">
@@ -257,35 +307,16 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel />
+              <RightPanel onNavigate={handleNavigate} />
             </div>
-            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
+            <MusicPlayer 
+              onNavigate={handleNavigate}
+              onExpandClick={handleExpandPlayer}
+              currentSong={currentSong}
+            />
           </div>
         );
-      case 'library-page':
-        return (
-          <div className="flex h-screen bg-black overflow-hidden flex-col">
-            <div className="flex flex-1 overflow-hidden">
-              <LeftSidebar 
-                onNavigate={handleSidebarNavigate}
-                currentPage={currentPage}
-              />
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <TopNavigation 
-                  onNavigate={handleNavigate}
-                  currentPage={currentPage}
-                />
-                <LibraryPage 
-                  onNavigate={handleNavigate}
-                  category={libraryCategory}
-                />
-              </div>
-              <RightPanel />
-            </div>
-            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
-          </div>
-        );
-      case 'song-detail':
+      case 'song':
         return (
           <div className="flex h-screen bg-black overflow-hidden flex-col">
             <div className="flex flex-1 overflow-hidden">
@@ -305,9 +336,13 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel />
+              <RightPanel onNavigate={handleNavigate} />
             </div>
-            <MusicPlayer currentSong={currentSong} onNavigate={handleNavigate} />
+            <MusicPlayer 
+              onNavigate={handleNavigate}
+              onExpandClick={handleExpandPlayer}
+              currentSong={currentSong}
+            />
           </div>
         );
       default:
@@ -321,7 +356,17 @@ function App() {
     }
   };
 
-  return <>{renderView()}</>;
+  return (
+    <>
+      {renderView()}
+      {showNowPlaying && (
+        <NowPlayingFullscreen 
+          onClose={() => setShowNowPlaying(false)}
+          currentSong={currentSong}
+        />
+      )}
+    </>
+  );
 }
 
 export default App;
