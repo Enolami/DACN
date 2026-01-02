@@ -7,58 +7,74 @@ import { useState } from 'react';
 import { NotificationsPanel } from './NotificationsPanel';
 
 interface TopNavigationProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, data?: any) => void;
   currentPage: string;
+  onBack?: () => void;
+  onForward?: () => void;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
 }
 
-export function TopNavigation({ onNavigate, currentPage }: TopNavigationProps) {
+export function TopNavigation({ onNavigate, currentPage, onBack, onForward, canGoBack = false, canGoForward = false }: TopNavigationProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const unreadCount = 3;
 
   return (
     <>
-      <div className="bg-black/50 backdrop-blur-lg border-b border-[#1a1a1a] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div className="bg-black/50 backdrop-blur-lg border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         {/* Navigation Arrows */}
-        <div className="flex items-center gap-4">
-          <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
             <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: 'rgba(26, 26, 26, 1)' }}
-              whileTap={{ scale: 0.95 }}
-              className="w-9 h-9 bg-[#0a0a0a] rounded-full flex items-center justify-center transition-colors"
+              whileHover={canGoBack ? { scale: 1.1, backgroundColor: 'rgba(26, 26, 26, 1)' } : {}}
+              whileTap={canGoBack ? { scale: 0.95 } : {}}
+              onClick={canGoBack ? onBack : undefined}
+              disabled={!canGoBack}
+              className={`w-9 h-9 bg-[#0a0a0a] rounded-full flex items-center justify-center transition-colors ${
+                canGoBack 
+                  ? 'cursor-pointer hover:bg-[#1a1a1a]' 
+                  : 'cursor-not-allowed opacity-40'
+              }`}
             >
-              <ChevronLeft className="w-5 h-5 text-white" strokeWidth={1.5} />
+              <ChevronLeft className={`w-5 h-5 ${canGoBack ? 'text-white' : 'text-gray-500'}`} strokeWidth={1.5} />
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: 'rgba(26, 26, 26, 1)' }}
-              whileTap={{ scale: 0.95 }}
-              className="w-9 h-9 bg-[#0a0a0a] rounded-full flex items-center justify-center transition-colors"
+              whileHover={canGoForward ? { scale: 1.1, backgroundColor: 'rgba(26, 26, 26, 1)' } : {}}
+              whileTap={canGoForward ? { scale: 0.95 } : {}}
+              onClick={canGoForward ? onForward : undefined}
+              disabled={!canGoForward}
+              className={`w-9 h-9 bg-[#0a0a0a] rounded-full flex items-center justify-center transition-colors ${
+                canGoForward 
+                  ? 'cursor-pointer hover:bg-[#1a1a1a]' 
+                  : 'cursor-not-allowed opacity-40'
+              }`}
             >
-              <ChevronRight className="w-5 h-5 text-white" strokeWidth={1.5} />
+              <ChevronRight className={`w-5 h-5 ${canGoForward ? 'text-white' : 'text-gray-500'}`} strokeWidth={1.5} />
             </motion.button>
           </div>
         </div>
 
         {/* Search Bar */}
-        <div className="flex-1 max-w-2xl mx-8">
+        <div className="flex-1 max-w-2xl mx-6">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={2} />
             <Input
               placeholder="What do you want to listen to?"
-              className="w-full bg-[#1a1a1a] border-none rounded-full pl-12 pr-12 h-11 text-white placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-full pl-11 pr-11 h-10 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88] focus-visible:border-[#00ff88] text-sm"
               onClick={() => onNavigate('search')}
             />
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#00ff88] transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#00ff88] transition-colors p-1.5 rounded-full hover:bg-[#1a1a1a]"
             >
-              <Mic className="w-5 h-5" strokeWidth={1.5} />
+              <Mic className="w-4 h-4" strokeWidth={2} />
             </motion.button>
           </div>
         </div>
 
         {/* User Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <motion.div 
             whileHover={{ scale: 1.1 }} 
             className="relative cursor-pointer"

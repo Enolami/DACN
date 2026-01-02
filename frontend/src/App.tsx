@@ -18,6 +18,12 @@ import { NowPlayingFullscreen } from './components/Login/NowPlayingFullscreen';
 
 type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song';
 
+interface NavigationState {
+  view: View;
+  page: string;
+  data?: any;
+}
+
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
   const [resetMode, setResetMode] = useState<'reset' | 'verify'>('verify');
@@ -26,6 +32,12 @@ function App() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
   const [selectedSong, setSelectedSong] = useState<any>(null);
   const [showNowPlaying, setShowNowPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Navigation history
+  const [history, setHistory] = useState<NavigationState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  
   // Current playing song - shared across app
   const [currentSong, setCurrentSong] = useState<any>({
     title: 'Neon Dreams',
@@ -62,8 +74,36 @@ function App() {
     setCurrentView('home');
   };
 
+  const addToHistory = (view: View, page: string, data?: any) => {
+    const newState: NavigationState = { view, page, data };
+    
+    // If we're not at the end of history, remove future entries
+    if (historyIndex >= 0 && historyIndex < history.length - 1) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      const updatedHistory = [...newHistory, newState];
+      setHistory(updatedHistory);
+      setHistoryIndex(updatedHistory.length - 1);
+    } else {
+      // Add new entry to history
+      const updatedHistory = [...history, newState];
+      setHistory(updatedHistory);
+      setHistoryIndex(updatedHistory.length - 1);
+    }
+  };
+
   const handleNavigate = (page: string, data?: any) => {
     console.log(`Navigating to: ${page}`, data);
+    
+    // Save current state to history before navigating
+    if (currentView !== 'login' && currentView !== 'signup' && currentView !== 'forgot-password' && 
+        currentView !== 'reset-password' && currentView !== 'verify' && currentView !== 'subscription') {
+      addToHistory(currentView, currentPage, {
+        selectedArtist,
+        selectedPlaylist,
+        selectedSong,
+      });
+    }
+    
     // TODO: Implement navigation logic for different pages
     // For now, handle basic navigation
     if (page === 'playlist') {
@@ -80,17 +120,102 @@ function App() {
       // Navigate to song detail
       setSelectedSong(data);
       setCurrentSong(data); // Update current playing song
+      setIsPlaying(true); // Auto-play when navigating to song
       setCurrentView('song');
       setCurrentPage('song');
     } else if (page === 'profile') {
       // Navigate to user profile
       setCurrentView('profile');
       setCurrentPage('profile');
+    } else if (page === 'album') {
+      // Treat album as playlist for now
+      setSelectedPlaylist({
+        title: data?.title || 'Album',
+        description: `Album by ${data?.artist || 'Unknown'}`,
+        imageUrl: data?.imageUrl,
+      });
+      setCurrentView('playlist');
+      setCurrentPage('playlist');
     } else {
       // Update current page for sidebar navigation
       setCurrentPage(page);
     }
   };
+
+  const handleBack = () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      const prevState = history[prevIndex];
+      
+      setHistoryIndex(prevIndex);
+      setCurrentView(prevState.view);
+      setCurrentPage(prevState.page);
+      
+      if (prevState.data) {
+        if (prevState.view === 'playlist') {
+          setSelectedPlaylist(prevState.data.selectedPlaylist);
+        } else if (prevState.view === 'artist-profile') {
+          setSelectedArtist(prevState.data.selectedArtist);
+        } else if (prevState.view === 'song') {
+          setSelectedSong(prevState.data.selectedSong);
+          if (prevState.data.selectedSong) {
+            setCurrentSong(prevState.data.selectedSong);
+          }
+        } else if (prevState.view === 'home') {
+          // Restore home page state
+          setSelectedPlaylist(null);
+          setSelectedArtist(null);
+          setSelectedSong(null);
+        }
+      } else {
+        // Clear selections when going back to home without data
+        if (prevState.view === 'home') {
+          setSelectedPlaylist(null);
+          setSelectedArtist(null);
+          setSelectedSong(null);
+        }
+      }
+    }
+  };
+
+  const handleForward = () => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1;
+      const nextState = history[nextIndex];
+      
+      setHistoryIndex(nextIndex);
+      setCurrentView(nextState.view);
+      setCurrentPage(nextState.page);
+      
+      if (nextState.data) {
+        if (nextState.view === 'playlist') {
+          setSelectedPlaylist(nextState.data.selectedPlaylist);
+        } else if (nextState.view === 'artist-profile') {
+          setSelectedArtist(nextState.data.selectedArtist);
+        } else if (nextState.view === 'song') {
+          setSelectedSong(nextState.data.selectedSong);
+          if (nextState.data.selectedSong) {
+            setCurrentSong(nextState.data.selectedSong);
+          }
+        } else if (nextState.view === 'home') {
+          // Restore home page state
+          setSelectedPlaylist(null);
+          setSelectedArtist(null);
+          setSelectedSong(null);
+        }
+      } else {
+        // Clear selections when going forward to home without data
+        if (nextState.view === 'home') {
+          setSelectedPlaylist(null);
+          setSelectedArtist(null);
+          setSelectedSong(null);
+        }
+      }
+    }
+  };
+
+  const canGoBack = historyIndex > 0;
+  const canGoForward = historyIndex < history.length - 1;
 
   const handleExpandPlayer = () => {
     // Open Now Playing Fullscreen
@@ -98,15 +223,34 @@ function App() {
   };
 
   const handleSidebarNavigate = (page: string) => {
-    setCurrentPage(page);
+    // Save current state to history before navigating
+    if (currentView !== 'login' && currentView !== 'signup' && currentView !== 'forgot-password' && 
+        currentView !== 'reset-password' && currentView !== 'verify' && currentView !== 'subscription') {
+      addToHistory(currentView, currentPage, {
+        selectedArtist,
+        selectedPlaylist,
+        selectedSong,
+      });
+    }
+    
     // Handle navigation to different pages
-    if (page === 'home' && currentView !== 'home') {
+    if (page === 'home') {
       setCurrentView('home');
+      setCurrentPage('home');
+      // Clear selections when going to home
+      setSelectedPlaylist(null);
+      setSelectedArtist(null);
+      setSelectedSong(null);
     } else if (page === 'library' || page === 'liked' || page === 'artists' || page === 'albums') {
       // For library pages, stay in home view but show LibraryPage
-      if (currentView !== 'home') {
-        setCurrentView('home');
-      }
+      setCurrentView('home');
+      setCurrentPage(page);
+      // Clear selections when navigating to library pages
+      setSelectedPlaylist(null);
+      setSelectedArtist(null);
+      setSelectedSong(null);
+    } else {
+      setCurrentPage(page);
     }
     console.log(`Sidebar navigation to: ${page}`);
   };
@@ -220,6 +364,10 @@ function App() {
                 <TopNavigation 
                   onNavigate={handleNavigate}
                   currentPage={currentPage}
+                  onBack={handleBack}
+                  onForward={handleForward}
+                  canGoBack={canGoBack}
+                  canGoForward={canGoForward}
                 />
                 {renderContent()}
               </div>
@@ -229,6 +377,8 @@ function App() {
               onNavigate={handleNavigate}
               onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={setIsPlaying}
             />
           </div>
         );
@@ -244,6 +394,10 @@ function App() {
                 <TopNavigation 
                   onNavigate={handleNavigate}
                   currentPage={currentPage}
+                  onBack={handleBack}
+                  onForward={handleForward}
+                  canGoBack={canGoBack}
+                  canGoForward={canGoForward}
                 />
                 {selectedArtist && (
                   <ArtistProfile 
@@ -258,6 +412,8 @@ function App() {
               onNavigate={handleNavigate}
               onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={setIsPlaying}
             />
           </div>
         );
@@ -273,6 +429,10 @@ function App() {
                 <TopNavigation 
                   onNavigate={handleNavigate}
                   currentPage={currentPage}
+                  onBack={handleBack}
+                  onForward={handleForward}
+                  canGoBack={canGoBack}
+                  canGoForward={canGoForward}
                 />
                 <ProfilePage 
                   onNavigate={handleNavigate}
@@ -284,6 +444,8 @@ function App() {
               onNavigate={handleNavigate}
               onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={setIsPlaying}
             />
           </div>
         );
@@ -299,6 +461,10 @@ function App() {
                 <TopNavigation 
                   onNavigate={handleNavigate}
                   currentPage={currentPage}
+                  onBack={handleBack}
+                  onForward={handleForward}
+                  canGoBack={canGoBack}
+                  canGoForward={canGoForward}
                 />
                 {selectedPlaylist && (
                   <PlaylistDetail 
@@ -313,6 +479,8 @@ function App() {
               onNavigate={handleNavigate}
               onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={setIsPlaying}
             />
           </div>
         );
@@ -328,6 +496,10 @@ function App() {
                 <TopNavigation 
                   onNavigate={handleNavigate}
                   currentPage={currentPage}
+                  onBack={handleBack}
+                  onForward={handleForward}
+                  canGoBack={canGoBack}
+                  canGoForward={canGoForward}
                 />
                 {selectedSong && (
                   <SongDetail 
@@ -342,6 +514,8 @@ function App() {
               onNavigate={handleNavigate}
               onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={setIsPlaying}
             />
           </div>
         );
@@ -363,6 +537,9 @@ function App() {
         <NowPlayingFullscreen 
           onClose={() => setShowNowPlaying(false)}
           currentSong={currentSong}
+          isPlaying={isPlaying}
+          onPlayPause={setIsPlaying}
+          onNavigate={handleNavigate}
         />
       )}
     </>

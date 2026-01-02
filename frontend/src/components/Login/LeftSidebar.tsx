@@ -24,7 +24,7 @@ export function LeftSidebar({ onNavigate, currentPage }: LeftSidebarProps) {
   ];
 
   return (
-    <div className="w-64 bg-black h-full flex flex-col p-4 border-r border-[#1a1a1a]">
+    <div className="w-64 bg-black h-full flex flex-col p-4 border-r border-[#1a1a1a] overflow-y-auto">
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8 px-3 cursor-pointer" onClick={() => onNavigate('home')}>
         <div className="w-8 h-8 bg-gradient-to-br from-[#00ff88] to-[#a855f7] rounded-lg flex items-center justify-center">

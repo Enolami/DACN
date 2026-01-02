@@ -1,5 +1,5 @@
 import { ImageWithFallback } from './img/ImageWithFallback';
-import { Heart, Download, Share2, Plus, Play, ChevronDown, Lightbulb, Music2 } from 'lucide-react';
+import { Heart, Download, Share2, Plus, Play, ChevronDown, Music2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
@@ -93,8 +93,6 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
     return () => cancelAnimationFrame(animationId);
   }, []);
 
-  const moods = ['Chill', 'Night Drive', 'Synthwave', 'Dreamy', 'Energetic'];
-
   const credits = [
     { role: 'Lead Artist', name: song.artist, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=artist1' },
     { role: 'Producer', name: 'Echo Sound Labs', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=producer' },
@@ -149,41 +147,49 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
           </motion.div>
 
           {/* Primary Actions */}
-          <div className="flex items-center justify-center gap-4 mb-8">
+          <div className="flex items-center justify-center gap-3 mb-8">
             <Button
               size="icon"
               variant="ghost"
               onClick={() => setIsLiked(!isLiked)}
-              className={`w-12 h-12 rounded-full ${isLiked ? 'text-[#ec4899]' : 'text-gray-400'} hover:text-[#ec4899]`}
+              className={`w-10 h-10 rounded-full ${isLiked ? 'text-[#ec4899]' : 'text-gray-400'} hover:text-[#ec4899] hover:bg-[#1a1a1a]`}
             >
-              <Heart className={`w-6 h-6 ${isLiked ? 'fill-[#ec4899]' : ''}`} />
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-[#ec4899]' : ''}`} />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="w-12 h-12 rounded-full text-gray-400 hover:text-white"
+              className="w-10 h-10 rounded-full text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
             >
-              <Download className="w-5 h-5" />
+              <Download className="w-4 h-4" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="w-12 h-12 rounded-full text-gray-400 hover:text-white"
+              className="w-10 h-10 rounded-full text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
             >
-              <Share2 className="w-5 h-5" />
+              <Share2 className="w-4 h-4" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="w-12 h-12 rounded-full text-gray-400 hover:text-white"
+              className="w-10 h-10 rounded-full text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
             </Button>
           </div>
 
           {/* Play Button */}
-          <Button className="bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black px-12 py-6 rounded-full gap-3 mb-8">
-            <Play className="w-6 h-6 fill-black" />
+          <Button 
+            className="bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black px-10 py-5 rounded-full gap-2 mb-8 font-semibold text-base"
+            onClick={() => {
+              // Update current song and start playing
+              if (onNavigate) {
+                onNavigate('song', song);
+              }
+            }}
+          >
+            <Play className="w-5 h-5 fill-black" />
             Play Now
           </Button>
         </div>
@@ -238,27 +244,6 @@ export function SongDetail({ song, onNavigate }: SongDetailProps) {
             </div>
           </TabsContent>
         </Tabs>
-
-        {/* AI Insights Section */}
-        <div className="bg-gradient-to-br from-[#00ff88]/10 to-[#a855f7]/10 border border-[#00ff88]/20 rounded-xl p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Lightbulb className="w-5 h-5 text-[#00ff88]" />
-            <h3 className="text-white text-xl">AI-Generated Insights</h3>
-          </div>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {moods.map((mood, index) => (
-              <Badge
-                key={index}
-                className="bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50 hover:bg-[#00ff88]/30"
-              >
-                {mood}
-              </Badge>
-            ))}
-          </div>
-          <Button variant="ghost" className="text-[#00ff88] hover:text-[#00ff88]/80 hover:bg-[#00ff88]/10">
-            Why this recommendation?
-          </Button>
-        </div>
 
         {/* Credits Section */}
         <Collapsible open={isCreditsOpen} onOpenChange={setIsCreditsOpen}>

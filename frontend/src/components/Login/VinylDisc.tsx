@@ -92,6 +92,9 @@ export function VinylDisc({
             className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"
           />
         )}
+        
+        {/* Clickable overlay - ensures entire disc is clickable */}
+        <div className="absolute inset-0 rounded-full pointer-events-auto cursor-pointer" />
       </motion.div>
     </div>
   );

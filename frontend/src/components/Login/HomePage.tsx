@@ -86,7 +86,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
   return (
     <ScrollArea className="flex-1 h-full bg-black">
-      <div className="p-8">
+      <div className="p-6 md:p-8">
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="bg-transparent border-b border-[#1a1a1a] rounded-none p-0 h-auto gap-8 mb-8">
             <TabsTrigger
@@ -120,12 +120,12 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </div>
 
             {/* AI Personalized - For You */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
+            <div className="mb-10">
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <Sparkles className="w-6 h-6 text-[#a855f7]" />
-                  <h2 className="text-white text-2xl">For You</h2>
-                  <Badge className="bg-gradient-to-r from-[#00ff88] to-[#a855f7] text-black border-none">
+                  <Sparkles className="w-5 h-5 text-[#a855f7]" />
+                  <h2 className="text-white text-xl font-semibold">For You</h2>
+                  <Badge className="bg-gradient-to-r from-[#00ff88] to-[#a855f7] text-black border-none text-xs">
                     AI Personalized
                   </Badge>
                 </div>
@@ -140,8 +140,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </div>
 
             {/* Recommended Artists */}
-            <div className="mb-12">
-              <h2 className="text-white text-2xl mb-6">Recommended Artists</h2>
+            <div className="mb-10">
+              <h2 className="text-white text-xl font-semibold mb-5">Recommended Artists</h2>
               <div className="grid grid-cols-5 gap-8">
                 {recommendedArtists.map((artist, index) => (
                   <div key={index} onClick={() => onNavigate('artist', artist)}>
@@ -152,10 +152,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </div>
 
             {/* Popular Radios */}
-            <div className="mb-12">
-              <div className="flex items-center gap-3 mb-6">
-                <Radio className="w-6 h-6 text-[#00ff88]" />
-                <h2 className="text-white text-2xl">Popular Radios</h2>
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-5">
+                <Radio className="w-5 h-5 text-[#00ff88]" />
+                <h2 className="text-white text-xl font-semibold">Popular Radios</h2>
               </div>
               <div className="grid grid-cols-3 gap-6">
                 {popularRadios.map((radio, index) => (

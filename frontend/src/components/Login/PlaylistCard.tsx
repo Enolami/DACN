@@ -6,12 +6,20 @@ interface PlaylistCardProps {
   title: string;
   description: string;
   imageUrl: string;
+  onNavigate?: (page: string, data?: any) => void;
 }
 
-export function PlaylistCard({ title, description, imageUrl }: PlaylistCardProps) {
+export function PlaylistCard({ title, description, imageUrl, onNavigate }: PlaylistCardProps) {
+  const handleClick = () => {
+    if (onNavigate) {
+      onNavigate('playlist', { title, description, imageUrl });
+    }
+  };
+
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
+      onClick={handleClick}
       className="group bg-[#1a1a1a] p-4 rounded-xl cursor-pointer transition-all hover:bg-[#252525] relative"
     >
       <div className="relative mb-4">

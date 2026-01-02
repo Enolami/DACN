@@ -87,7 +87,7 @@ export function PlaylistDetail({ playlist, onNavigate }: PlaylistDetailProps) {
             </motion.div>
             <div className="flex-1 pb-4">
               <p className="text-sm text-gray-400 mb-2">PLAYLIST</p>
-              <h1 className="text-white text-6xl mb-3">{playlist.title}</h1>
+              <h1 className="text-white text-5xl md:text-6xl mb-3 font-bold">{playlist.title}</h1>
               <p className="text-gray-300 text-lg mb-4">{playlist.description}</p>
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <span className="text-white">AI Music</span>
@@ -102,32 +102,47 @@ export function PlaylistDetail({ playlist, onNavigate }: PlaylistDetailProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="p-8 pb-4 flex items-center gap-4">
+      <div className="px-8 py-6 flex items-center gap-3 flex-wrap">
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Button className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-black gap-2 px-8 py-6 rounded-full">
-            <Play className="w-6 h-6 fill-black" />
+          <Button 
+            className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-black gap-2 px-8 py-5 rounded-full font-semibold"
+            onClick={() => {
+              // Start playing first track in playlist
+              if (tracks.length > 0 && onNavigate) {
+                const firstTrack = tracks[0];
+                onNavigate('song', {
+                  title: firstTrack.title,
+                  artist: firstTrack.artist,
+                  album: firstTrack.album,
+                  duration: firstTrack.duration,
+                  imageUrl: playlist.imageUrl,
+                });
+              }
+            }}
+          >
+            <Play className="w-5 h-5 fill-black" />
             Play
           </Button>
         </motion.div>
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Button className="bg-transparent border-2 border-[#a855f7] text-[#a855f7] hover:bg-[#a855f7]/10 gap-2 px-6 py-6 rounded-full">
-            <Heart className="w-5 h-5" />
+          <Button className="bg-transparent border-2 border-[#a855f7] text-[#a855f7] hover:bg-[#a855f7]/10 gap-2 px-6 py-5 rounded-full">
+            <Heart className="w-4 h-4" />
             Follow
           </Button>
         </motion.div>
         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button variant="ghost" size="icon" className="w-12 h-12 text-gray-400 hover:text-white rounded-full">
-            <Download className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="w-10 h-10 text-gray-400 hover:text-white hover:bg-[#1a1a1a] rounded-full">
+            <Download className="w-4 h-4" />
           </Button>
         </motion.div>
         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button variant="ghost" size="icon" className="w-12 h-12 text-gray-400 hover:text-white rounded-full">
-            <Share2 className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="w-10 h-10 text-gray-400 hover:text-white hover:bg-[#1a1a1a] rounded-full">
+            <Share2 className="w-4 h-4" />
           </Button>
         </motion.div>
         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button variant="ghost" size="icon" className="w-12 h-12 text-gray-400 hover:text-white rounded-full">
-            <MoreHorizontal className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="w-10 h-10 text-gray-400 hover:text-white hover:bg-[#1a1a1a] rounded-full">
+            <MoreHorizontal className="w-4 h-4" />
           </Button>
         </motion.div>
       </div>
@@ -147,7 +162,7 @@ export function PlaylistDetail({ playlist, onNavigate }: PlaylistDetailProps) {
         </div>
         <div className="grid grid-cols-4 gap-6">
           {suggestedPlaylists.map((suggestedPlaylist, index) => (
-            <PlaylistCard key={index} {...suggestedPlaylist} />
+            <PlaylistCard key={index} {...suggestedPlaylist} onNavigate={onNavigate} />
           ))}
         </div>
       </div>

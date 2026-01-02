@@ -18,6 +18,7 @@ import {
   interface NowPlayingFullscreenProps {
     onClose: () => void;
     onArtistClick?: (artistId: string) => void;
+    onNavigate?: (page: string, data?: any) => void;
     currentSong?: {
       title?: string;
       artist?: string;
@@ -26,10 +27,22 @@ import {
       imageUrl?: string;
     };
     isPlaying?: boolean;
+    onPlayPause?: (playing: boolean) => void;
   }
   
-  export function NowPlayingFullscreen({ onClose, onArtistClick, currentSong, isPlaying: externalIsPlaying }: NowPlayingFullscreenProps) {
-    const [isPlaying, setIsPlaying] = useState(externalIsPlaying ?? true);
+  export function NowPlayingFullscreen({ onClose, onArtistClick, onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause }: NowPlayingFullscreenProps) {
+    const [isPlaying, setIsPlaying] = useState(externalIsPlaying);
+    
+    // Sync with external state
+    useEffect(() => {
+      setIsPlaying(externalIsPlaying);
+    }, [externalIsPlaying]);
+
+    const handlePlayPause = () => {
+      const newState = !isPlaying;
+      setIsPlaying(newState);
+      onPlayPause?.(newState);
+    };
     const [isLiked, setIsLiked] = useState(false);
     const [isShuffle, setIsShuffle] = useState(false);
     const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
@@ -99,7 +112,7 @@ import {
         const currentLineElement = lyricsRef.current.querySelector('[data-current="true"]');
         if (currentLineElement) {
           currentLineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        } 
       }
     }, [currentTime, showLyrics]);
   
@@ -116,7 +129,19 @@ import {
     };
   
     const handleArtistNameClick = () => {
-      setShowArtistPanel(true);
+      if (onNavigate && currentSong?.artist) {
+        onNavigate('artist', { name: currentSong.artist, genre: 'Electronic' });
+        onClose(); // Close fullscreen when navigating
+      } else {
+        setShowArtistPanel(true);
+      }
+    };
+
+    const handleSongTitleClick = () => {
+      if (onNavigate && currentSong) {
+        onNavigate('song', currentSong);
+        // Don't close fullscreen, just update the song
+      }
     };
   
     return (
@@ -198,14 +223,19 @@ import {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.6 }}
-              className="relative mb-8"
+              className="relative mb-8 cursor-pointer"
+              onClick={handleSongTitleClick}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <VinylDisc
-                imageUrl={currentSong?.imageUrl || "https://images.unsplash.com/photo-1692176548571-86138128e36c?w=500"}
-                alt={currentSong?.title ? `${currentSong.title} by ${currentSong.artist}` : "Album Cover"}
-                size={500}
-                isPlaying={isPlaying}
-              />
+              <div className="relative pointer-events-auto">
+                <VinylDisc
+                  imageUrl={currentSong?.imageUrl || "https://images.unsplash.com/photo-1692176548571-86138128e36c?w=500"}
+                  alt={currentSong?.title ? `${currentSong.title} by ${currentSong.artist}` : "Album Cover"}
+                  size={500}
+                  isPlaying={isPlaying}
+                />
+              </div>
             </motion.div>
   
             {/* Track Info */}
@@ -213,22 +243,28 @@ import {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-center mb-6 w-full"
+              className="text-center mb-8 w-full"
             >
-              <h1 className="text-white mb-3">{currentSong?.title || "Digital Dreams"}</h1>
+              <motion.h1 
+                onClick={handleSongTitleClick}
+                className="text-white text-4xl md:text-5xl font-bold mb-4 cursor-pointer hover:text-[#00ff88] transition-colors"
+                whileHover={{ scale: 1.02 }}
+              >
+                {currentSong?.title || "Digital Dreams"}
+              </motion.h1>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleArtistNameClick}
-                className="text-gray-300 hover:text-white hover:underline transition-all mb-3"
+                className="text-gray-300 hover:text-white hover:underline transition-all mb-4 text-lg"
               >
                 {currentSong?.artist || "Nova Pulse"}
               </motion.button>
-              <div className="flex items-center justify-center gap-2">
-                <Badge className="bg-[#1a1a1a] text-[#00ff88] border-[#00ff88]">
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Badge className="bg-[#1a1a1a] text-[#00ff88] border-[#00ff88] px-3 py-1">
                   Electronic
                 </Badge>
-                <Badge className="bg-gradient-to-r from-[#00ff88] to-[#a855f7] text-black border-none">
+                <Badge className="bg-gradient-to-r from-[#00ff88] to-[#a855f7] text-black border-none px-3 py-1">
                   <Sparkles className="w-3 h-3 mr-1" />
                   AI Enhanced
                 </Badge>
@@ -236,18 +272,18 @@ import {
             </motion.div>
   
             {/* Lyrics/Visualization Toggle */}
-            <div className="mb-6">
+            <div className="mb-8">
               <Tabs value={showLyrics ? 'lyrics' : 'visualization'} onValueChange={(v) => setShowLyrics(v === 'lyrics')} className="bg-black/40 backdrop-blur-xl rounded-full p-1">
                 <TabsList className="bg-transparent gap-1">
                   <TabsTrigger 
                     value="lyrics" 
-                    className="rounded-full data-[state=active]:bg-[#00ff88] data-[state=active]:text-black text-white px-6"
+                    className="rounded-full data-[state=active]:bg-[#00ff88] data-[state=active]:text-black text-white px-8 py-2 text-sm font-medium"
                   >
                     Lyrics
                   </TabsTrigger>
                   <TabsTrigger 
                     value="visualization" 
-                    className="rounded-full data-[state=active]:bg-[#a855f7] data-[state=active]:text-white text-white px-6"
+                    className="rounded-full data-[state=active]:bg-[#a855f7] data-[state=active]:text-white text-white px-8 py-2 text-sm font-medium"
                   >
                     Visualization
                   </TabsTrigger>
@@ -267,7 +303,7 @@ import {
                 >
                   <div 
                     ref={lyricsRef}
-                    className="bg-black/40 backdrop-blur-xl border border-[#1a1a1a] rounded-3xl p-8 h-64 overflow-auto custom-scrollbar"
+                    className="bg-black/40 backdrop-blur-xl border border-[#1a1a1a] rounded-3xl p-8 h-72 overflow-auto custom-scrollbar"
                   >
                     <div className="space-y-6">
                       {lyrics.map((line, index) => (
@@ -314,15 +350,15 @@ import {
             </AnimatePresence>
   
             {/* Progress Bar */}
-            <div className="w-full mb-6">
+            <div className="w-full mb-8">
               <Slider
                 value={[currentTime]}
                 onValueChange={([value]) => setCurrentTime(value)}
                 max={duration}
                 step={1}
-                className="w-full mb-2"
+                className="w-full mb-3"
               />
-              <div className="flex justify-between text-gray-400 text-sm">
+              <div className="flex justify-between text-gray-400 text-sm font-mono">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
@@ -333,7 +369,7 @@ import {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="flex items-center gap-6 mb-8"
+              className="flex items-center gap-4 mb-8"
             >
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -357,7 +393,7 @@ import {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setIsPlaying(!isPlaying)}
+                onClick={handlePlayPause}
                 className="w-20 h-20 rounded-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] flex items-center justify-center text-black shadow-lg shadow-[#00ff88]/50"
               >
                 {isPlaying ? (
@@ -393,7 +429,7 @@ import {
             </motion.div>
   
             {/* Secondary Controls */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -474,7 +510,7 @@ import {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => setIsPlaying(!isPlaying)}
+                      onClick={handlePlayPause}
                       className="w-10 h-10 rounded-full bg-[#00ff88] flex items-center justify-center text-black"
                     >
                       {isPlaying ? (
@@ -571,6 +607,16 @@ import {
                               <motion.div
                                 key={song.id}
                                 whileHover={{ scale: 1.02 }}
+                                onClick={() => {
+                                  if (onNavigate) {
+                                    onNavigate('song', {
+                                      title: song.title,
+                                      artist: currentSong?.artist || 'Nova Pulse',
+                                      duration: song.duration,
+                                    });
+                                    onClose();
+                                  }
+                                }}
                                 className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#1a1a1a] transition-all cursor-pointer"
                               >
                                 <span className="text-gray-400 w-6">{index + 1}</span>
@@ -594,6 +640,16 @@ import {
                               <motion.div
                                 key={album}
                                 whileHover={{ scale: 1.05 }}
+                                onClick={() => {
+                                  if (onNavigate) {
+                                    onNavigate('playlist', {
+                                      title: `Cyber Dreams Vol. ${album}`,
+                                      description: `Album by ${currentSong?.artist || 'Nova Pulse'}`,
+                                      imageUrl: `https://images.unsplash.com/photo-${album === 1 ? '1644855640845-ab57a047320e' : album === 2 ? '1470225620780-dba8ba36b745' : '1598387993441-a364f854c3e1'}?w=300`,
+                                    });
+                                    onClose();
+                                  }
+                                }}
                                 className="cursor-pointer"
                               >
                                 <div className="aspect-square rounded-lg overflow-hidden mb-2">
@@ -618,6 +674,16 @@ import {
                             <motion.div
                               key={artist.id}
                               whileHover={{ scale: 1.02 }}
+                              onClick={() => {
+                                if (onNavigate) {
+                                  onNavigate('artist', {
+                                    name: artist.name,
+                                    genre: 'Electronic',
+                                    imageUrl: artist.image,
+                                  });
+                                  onClose();
+                                }
+                              }}
                               className="flex items-center gap-4 p-4 rounded-lg hover:bg-[#1a1a1a] transition-all cursor-pointer"
                             >
                               <Avatar className="w-16 h-16">
