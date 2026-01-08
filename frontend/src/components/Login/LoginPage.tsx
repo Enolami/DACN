@@ -1,12 +1,13 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Mail, Lock, Sparkles, Loader2 } from 'lucide-react';
+import { Mail, Lock, Sparkles, Loader2, AtSign } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { motion } from 'framer-motion';
-import { loginUser, loginWithGoogle, loginWithFacebook } from '../../services/api';
+import { loginUser, loginWithGoogle, loginWithFacebook, storeTokens, linkOAuthAccount } from '../../services/api';
+import { AccountLinkingDialog } from './AccountLinkingDialog';
 import { useGoogleLogin } from '@react-oauth/google';
 // CHANGED: Import the Component instead of the Hook to avoid TS errors
 import FacebookLogin from '@greatsumini/react-facebook-login';
@@ -14,16 +15,25 @@ import FacebookLogin from '@greatsumini/react-facebook-login';
 const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID || '';
 
 interface LoginPageProps {
-  onLogin: (token: string) => void;
+  onLogin: (token: string, remember?: boolean, view?: string, data?: any) => void;
   onSkipToSubscription: () => void;
   onForgotPassword?: () => void;
 }
 
 export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: LoginPageProps) {
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Account linking state
+  const [showAccountLinking, setShowAccountLinking] = useState(false);
+  const [linkingData, setLinkingData] = useState<{
+    email: string;
+    provider: 'google' | 'facebook';
+    oauthAccessToken: string;
+  } | null>(null);
 
   // 1. GOOGLE LOGIN HOOK
   const googleLogin = useGoogleLogin({
@@ -32,9 +42,31 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
       setError('');
       try {
         const data = await loginWithGoogle(tokenResponse.access_token);
-        onLogin(data.token);
+        
+        // Check if account linking is needed
+        if (data.needs_account_linking) {
+          setLinkingData({
+            email: data.email,
+            provider: 'google',
+            oauthAccessToken: data.oauth_access_token || tokenResponse.access_token,
+          });
+          setShowAccountLinking(true);
+          return;
+        }
+        
+        // Check if username is needed (OAuth users always need to set username)
+        if (data.needs_username) {
+          // Store temp token and navigate to username setup
+          storeTokens(data.temp_token, '', true);
+          onLogin(data.temp_token, true, 'set-username', data);
+          return;
+        }
+        
+        // Social logins behave like "remember me" by default
+        storeTokens(data.access, data.refresh, true);
+        onLogin(data.access, true, undefined, data);
       } catch (err: any) {
-        setError('Google login failed.');
+        setError(err.message || 'Google login failed.');
       } finally {
         setIsLoading(false);
       }
@@ -49,14 +81,40 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
     setIsLoading(true);
     setError('');
     try {
-      if (response.accessToken) {
-        const data = await loginWithFacebook(response.accessToken);
-        onLogin(data.token);
-      } else {
-        setError('Facebook login failed: No access token received.');
+      // Check if user actually accepted (has accessToken and userID)
+      if (!response.accessToken || !response.userID) {
+        // User cancelled or didn't grant permissions
+        setError('Facebook login was cancelled.');
+        setIsLoading(false);
+        return;
       }
+      
+      const data = await loginWithFacebook(response.accessToken);
+      
+      // Check if account linking is needed
+      if (data.needs_account_linking) {
+        setLinkingData({
+          email: data.email,
+          provider: 'facebook',
+          oauthAccessToken: data.oauth_access_token || response.accessToken,
+        });
+        setShowAccountLinking(true);
+        return;
+      }
+      
+      // Check if username is needed (OAuth users always need to set username)
+      if (data.needs_username) {
+        // Store temp token and navigate to username setup
+        storeTokens(data.temp_token, '', true);
+        onLogin(data.temp_token, true, 'set-username', data);
+        return;
+      }
+      
+      // Social logins behave like "remember me" by default
+      storeTokens(data.access, data.refresh, true);
+      onLogin(data.access, true, undefined, data);
     } catch (err: any) {
-      setError('Facebook login failed.');
+      setError(err.message || 'Facebook login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +122,8 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
 
   const handleFacebookFail = (error: any) => {
     console.error('Facebook Login Failed:', error);
-    setError('Facebook login failed.');
+    setIsLoading(false);
+    setError('Facebook login was cancelled or failed.');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,10 +131,11 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
     setIsLoading(true);
     setError('');
     try {
-      const data = await loginUser(email, password);
-      onLogin(data.token);
+      const data = await loginUser(usernameOrEmail, password);
+      storeTokens(data.access, data.refresh, rememberMe);
+      onLogin(data.access, rememberMe, undefined, data);
     } catch (err: any) {
-      setError('Invalid email or password');
+      setError(err.message || 'Invalid username/email or password');
     } finally {
       setIsLoading(false);
     }
@@ -162,16 +222,16 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
               </div>
             )}
             <div>
-              <Label htmlFor="email" className="text-gray-300 mb-2 block">Email</Label>
+              <Label htmlFor="usernameOrEmail" className="text-gray-300 mb-2 block">Username or Email</Label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
+                  id="usernameOrEmail"
+                  type="text"
+                  placeholder="username or your@email.com"
                   className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={usernameOrEmail}
+                  onChange={(e) => setUsernameOrEmail(e.target.value)}
                   required
                 />
               </div>
@@ -195,7 +255,12 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a]" />
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a]"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
                 Remember me
               </label>
               <button 
@@ -226,6 +291,40 @@ export function LoginPage({ onLogin, onSkipToSubscription, onForgotPassword }: L
           </p>
         </div>
       </motion.div>
+
+      {/* Account Linking Dialog */}
+      {linkingData && (
+        <AccountLinkingDialog
+          isOpen={showAccountLinking}
+          onClose={() => {
+            setShowAccountLinking(false);
+            setLinkingData(null);
+          }}
+          onLink={async (password: string) => {
+            if (!linkingData) return;
+            
+            try {
+              const data = await linkOAuthAccount(
+                linkingData.email,
+                password,
+                linkingData.provider,
+                linkingData.oauthAccessToken
+              );
+              
+              // Store tokens and navigate to home
+              storeTokens(data.access, data.refresh, true);
+              setShowAccountLinking(false);
+              setLinkingData(null);
+              onLogin(data.access, true, undefined, data);
+            } catch (err: any) {
+              throw err; // Let the dialog handle the error
+            }
+          }}
+          email={linkingData.email}
+          provider={linkingData.provider}
+          message="We found an existing account with this email. Would you like to link your account to it?"
+        />
+      )}
     </div>
   );
 }

@@ -1,15 +1,50 @@
-import { Mail, Sparkles, ArrowLeft } from 'lucide-react';
+import { Mail, Sparkles, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { forgotPassword } from '../../services/api';
 
 interface ForgotPasswordPageProps {
-  onSendResetLink: () => void;
+  onSendResetLink: (email: string) => void;
   onBackToLogin: () => void;
 }
 
 export function ForgotPasswordPage({ onSendResetLink, onBackToLogin }: ForgotPasswordPageProps) {
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess(false);
+
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await forgotPassword(email);
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setSuccess(true);
+        // Pass email to parent for OTP verification
+        setTimeout(() => {
+          onSendResetLink(email);
+        }, 1500);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen w-full bg-black flex items-center justify-center relative overflow-hidden">
       {/* Animated Background Gradients */}
@@ -68,10 +103,29 @@ export function ForgotPasswordPage({ onSendResetLink, onBackToLogin }: ForgotPas
           </div>
 
           <h1 className="text-white text-center text-3xl mb-2">Forgot Password</h1>
-          <p className="text-gray-400 text-center mb-8">Enter your email to receive a password reset link</p>
+          <p className="text-gray-400 text-center mb-8">Enter your email to receive a password reset code</p>
+
+          {/* Success Message */}
+          {success && (
+            <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <p className="text-green-400 text-sm text-center">
+                Reset code sent! Check your email.
+              </p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            </div>
+          )}
 
           {/* Email Form */}
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSendResetLink(); }}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <Label htmlFor="email" className="text-gray-300 mb-2 block">
                 Email
@@ -83,16 +137,30 @@ export function ForgotPasswordPage({ onSendResetLink, onBackToLogin }: ForgotPas
                   type="email"
                   placeholder="your@email.com"
                   className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading || success}
+                  required
                 />
               </div>
             </div>
 
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div whileHover={{ scale: isLoading || success ? 1 : 1.02 }} whileTap={{ scale: isLoading || success ? 1 : 0.98 }}>
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl"
+                disabled={isLoading || success}
+                className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send Reset Link
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin inline" />
+                    Sending...
+                  </>
+                ) : success ? (
+                  'Code Sent!'
+                ) : (
+                  'Send Reset Code'
+                )}
               </Button>
             </motion.div>
           </form>

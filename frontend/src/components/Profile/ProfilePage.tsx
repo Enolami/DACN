@@ -7,24 +7,35 @@ import { ArtistCard } from '../Login/ArtistCard';
 import { Badge } from '../Login/ui/badge';
 import { ScrollArea } from '../Login/ui/scroll-area';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { ImagePickerDialog } from './ImagePickerDialog';
 import { EditProfileDialog } from './EditProfileDialog';
 import { SettingsDialog } from './SettingsDialog';
+import { getProfile, updateProfile, uploadAvatar, removeAvatar, ProfileData } from '../../services/api';
+import { generateDefaultAvatar } from '../../utils/avatarUtils';
 
 interface ProfilePageProps {
   onNavigate?: (page: string, data?: any) => void;
+  onLogout?: () => void;
 }
 
-export function ProfilePage({ onNavigate }: ProfilePageProps) {
+export function ProfilePage({ onNavigate, onLogout }: ProfilePageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [userImageUrl, setUserImageUrl] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=john');
-  const [userName, setUserName] = useState('John Doe');
-  const [userBio, setUserBio] = useState('Music enthusiast and playlist curator. Love discovering new sounds and sharing them with the world.');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
+  // Profile state
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [userImageUrl, setUserImageUrl] = useState(generateDefaultAvatar('User'));
+  const [userName, setUserName] = useState(''); // Display name (from Profile.name)
+  const [userUsername, setUserUsername] = useState(''); // Username (from User.username)
+  const [userBio, setUserBio] = useState('');
+
+  // Use scroll - container ref is always attached since container div is always rendered
   const { scrollY } = useScroll({
     container: containerRef,
   });
@@ -32,28 +43,113 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const headerOpacity = useTransform(scrollY, [0, 200], [1, 0]);
   const headerScale = useTransform(scrollY, [0, 200], [1, 0.8]);
 
-  // Mock user data
+  // Fetch profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await getProfile();
+        setProfile(data);
+        // Prioritize name over first_name (name is the actual field, first_name is alias)
+        const displayName = data.name || data.first_name || data.username || 'User';
+        setUserName(displayName); // Display name from Profile.name
+        setUserUsername(data.username || ''); // Username from User.username
+        setUserBio(data.bio || '');
+        setUserImageUrl(
+          data.avatar_url && data.avatar_url.trim() !== ''
+            ? data.avatar_url
+            : generateDefaultAvatar(data.username || 'User')
+        );
+      } catch (err: any) {
+        console.error('Failed to fetch profile:', err);
+        setError(err.message || 'Failed to load profile');
+        // Set defaults on error
+        setUserName('User');
+        setUserBio('');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // Format join date
+  const formatJoinDate = (dateString: string) => {
+    if (!dateString) return 'Recently';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  // User data derived from profile
   const user = {
-    name: userName,
-    username: '@johndoe',
+    name: userName, // Display name (Profile.name)
+    username: userUsername || profile?.username || 'user', // Username (User.username)
     bio: userBio,
     imageUrl: userImageUrl,
     coverImageUrl: 'https://images.unsplash.com/photo-1596807323443-a1528e2cd0ec?w=1600',
-    joinDate: 'January 2023',
-    location: 'New York, USA',
+    joinDate: profile?.join_date ? formatJoinDate(profile.join_date) : 'Recently',
+    location: 'New York, USA', // Not in schema yet
   };
 
-  const handleImageSelect = (imageUrl: string) => {
-    setUserImageUrl(imageUrl);
-    // In a real app, you would also save this to the backend here
-    console.log('Image selected:', imageUrl);
+  const handleImageSelect = async (imageUrl: string) => {
+    try {
+      setIsUploadingAvatar(true);
+      setError(null);
+      const updatedProfile = await uploadAvatar(imageUrl);
+      setProfile(updatedProfile);
+      setUserImageUrl(updatedProfile.avatar_url || imageUrl);
+      
+      // Dispatch event to notify other components (like TopNavigation) that profile was updated
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+    } catch (err: any) {
+      console.error('Failed to upload avatar:', err);
+      setError(err.message || 'Failed to upload avatar');
+      throw err; // Re-throw to let dialog know upload failed
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
-  const handleProfileSave = (name: string, bio: string) => {
-    setUserName(name);
-    setUserBio(bio);
-    // In a real app, you would also save this to the backend here
-    console.log('Profile updated:', { name, bio });
+  const handleRemoveAvatar = async () => {
+    try {
+      setIsUploadingAvatar(true);
+      setError(null);
+      const updatedProfile = await removeAvatar();
+      setProfile(updatedProfile);
+      // Use default avatar with first letter of username
+      const defaultAvatar = generateDefaultAvatar(updatedProfile.username || 'User');
+      setUserImageUrl(defaultAvatar);
+      
+      // Dispatch event to notify other components (like TopNavigation) that profile was updated
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+    } catch (err: any) {
+      console.error('Failed to remove avatar:', err);
+      setError(err.message || 'Failed to remove avatar');
+      throw err; // Re-throw to let dialog know removal failed
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleProfileSave = async (name: string, bio: string) => {
+    try {
+      setIsLoading(true);
+      const updatedProfile = await updateProfile(name, bio);
+      setProfile(updatedProfile);
+      setUserName(updatedProfile.name || updatedProfile.first_name || 'User');
+      setUserUsername(updatedProfile.username || '');
+      setUserBio(updatedProfile.bio || '');
+      
+      // Dispatch event to notify other components (like TopNavigation) that profile was updated
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const stats = {
@@ -116,6 +212,17 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
 
   return (
     <div ref={containerRef} className="flex-1 h-full overflow-auto">
+      {isLoading && !profile ? (
+        <div className="flex-1 h-full flex items-center justify-center">
+          <div className="text-gray-400">Loading profile...</div>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="m-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              {error}
+            </div>
+          )}
       {/* Hero Header with Scroll Effect */}
       <div className="relative h-[500px] overflow-hidden">
         {/* Background Image with Gradient */}
@@ -171,10 +278,6 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
             <div className="flex-1 pb-6">
               {/* User Badge & Join Date */}
               <div className="flex items-center gap-3 mb-3">
-                <div className="flex items-center gap-2 bg-[#00ff88]/20 backdrop-blur-sm px-3 py-1 rounded-full border border-[#00ff88]/30">
-                  <UserPlus className="w-4 h-4 text-[#00ff88]" />
-                  <span className="text-sm text-[#00ff88]">Premium Member</span>
-                </div>
                 <div className="flex items-center gap-2 text-gray-400">
                   <Calendar className="w-4 h-4" />
                   <span className="text-sm">Joined {user.joinDate}</span>
@@ -399,9 +502,15 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
       {/* Image Picker Dialog */}
       <ImagePickerDialog
         isOpen={isImageDialogOpen}
-        onClose={() => setIsImageDialogOpen(false)}
+        onClose={() => {
+          if (!isUploadingAvatar) {
+            setIsImageDialogOpen(false);
+          }
+        }}
         onImageSelect={handleImageSelect}
+        onRemoveAvatar={handleRemoveAvatar}
         currentImageUrl={userImageUrl}
+        isUploading={isUploadingAvatar}
       />
 
       {/* Edit Profile Dialog */}
@@ -413,16 +522,14 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
         currentBio={userBio}
       />
 
-      {/* Settings Dialog */}
-      <SettingsDialog
-        isOpen={isSettingsDialogOpen}
-        onClose={() => setIsSettingsDialogOpen(false)}
-        onLogout={() => {
-          // In a real app, you would handle logout here
-          console.log('User logged out');
-          // Could navigate to login page, clear tokens, etc.
-        }}
-      />
+          {/* Settings Dialog */}
+          <SettingsDialog
+            isOpen={isSettingsDialogOpen}
+            onClose={() => setIsSettingsDialogOpen(false)}
+            onLogout={onLogout}
+          />
+        </>
+      )}
     </div>
   );
 }
