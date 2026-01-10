@@ -1,20 +1,173 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
+import uuid
 
-class Track(models.Model):
+class Artist(models.Model):
     """
-    Model to store uploaded music tracks and their analysis data.
+    Extension of the User table for artist-specific data.
+
+    Schema reference:
+      Artist {
+        id string pk
+        user_id User [ref, required]
+        stage_name string
+        verified bool
+        created_at datetime
+        updated_at datetime
+      }
     """
-    uploader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="artist_profile",
+    )
+    stage_name = models.CharField(max_length=255)
+    verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.stage_name
+
+
+class Album(models.Model):
+    """
+    Music catalog album.
+
+    Schema reference:
+      Album {
+        id string pk
+        title string
+        artist_id Artist [ref, required]
+        release_date datetime
+        cover_pic_url string
+        cover_pic_id string
+        created_at datetime
+        updated_at datetime
+      }
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    artist = models.ForeignKey(
+        Artist, on_delete=models.CASCADE, related_name="albums"
+    )
     title = models.CharField(max_length=255)
-    artist = models.CharField(max_length=255, blank=True)
-    audio_file = models.FileField(upload_to='tracks/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    
-    # Storing MFCC as JSON. For production with large datasets, 
-    # consider storing this in a binary file (e.g., .npy) or a NoSQL store.
-    mfcc_data = models.JSONField(null=True, blank=True)
-    is_processed = models.BooleanField(default=False)
+    release_date = models.DateTimeField(null=True, blank=True)
+    cover_pic_url = models.URLField(max_length=500, blank=True)
+    cover_pic_id = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.title} - {self.uploader.username}"
+    def __str__(self) -> str:  # pragma: no cover
+        return self.title
+
+
+class Song(models.Model):
+    """
+    Individual song / track in the catalog.
+
+    Schema reference:
+      Song {
+        id string pk
+        title string
+        album_id Album [ref]
+        duration int
+        audio_file_url string
+        mfcc_vector json
+        created_at datetime
+        updated_at datetime
+      }
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    album = models.ForeignKey(
+        Album,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="songs",
+    )
+    # Duration in seconds. For newly uploaded or imported songs this can be
+    # populated lazily after analysis, so we keep a sensible default.
+    duration = models.PositiveIntegerField(help_text="Duration in seconds", default=0)
+
+    # Optional local audio file (for uploads / Jamendo imports).
+    audio_file = models.FileField(upload_to="tracks/", null=True, blank=True)
+
+    # Public URL to stream this audio from (Jamendo URL or our own media URL).
+    audio_file_url = models.URLField(max_length=500, blank=True)
+
+    # Stored MFCC vector (content-based features for recommendations).
+    mfcc_vector = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.title
+
+
+class Playlist(models.Model):
+    """
+    User playlist model.
+
+    Schema reference:
+      Playlist {
+        id string pk
+        title string
+        owner_id User [ref, required]
+        is_public bool
+        created_at datetime
+        updated_at datetime
+      }
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="playlists",
+    )
+    is_public = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Explicit many-to-many via PlaylistSong join table
+    songs = models.ManyToManyField(
+        "Song", through="PlaylistSong", related_name="playlists"
+    )
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.title
+
+
+class PlaylistSong(models.Model):
+    """
+    Join table relating Playlists and Songs.
+
+    Schema reference:
+      PlaylistSong {
+        id string pk
+        playlist_id Playlist [ref, required]
+        song_id Song [ref, required]
+        added_at datetime
+      }
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    playlist = models.ForeignKey(
+        Playlist, on_delete=models.CASCADE, related_name="playlist_songs"
+    )
+    song = models.ForeignKey(
+        Song, on_delete=models.CASCADE, related_name="playlist_songs"
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("playlist", "song")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.playlist.title} - {self.song.title}"

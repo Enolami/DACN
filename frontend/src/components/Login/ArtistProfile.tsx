@@ -249,7 +249,9 @@ export function ArtistProfile({ artist, onNavigate }: ArtistProfileProps) {
               <p className="text-gray-400 mb-6">Based on what you listen to</p>
               <div className="grid grid-cols-4 gap-8">
                 {relatedArtists.map((relatedArtist, index) => (
-                  <ArtistCard key={index} {...relatedArtist} />
+                  <div key={index} onClick={() => onNavigate?.('artist', relatedArtist)}>
+                    <ArtistCard {...relatedArtist} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -262,6 +264,11 @@ export function ArtistProfile({ artist, onNavigate }: ArtistProfileProps) {
                 <motion.div
                   key={index}
                   whileHover={{ scale: 1.05, y: -5 }}
+                  onClick={() => onNavigate?.('playlist', {
+                    title: album.title,
+                    description: `Album by ${artist.name}`,
+                    imageUrl: album.imageUrl,
+                  })}
                   className="group cursor-pointer"
                 >
                   <div className="relative bg-[#1a1a1a] rounded-2xl overflow-hidden mb-4 aspect-square">
@@ -296,6 +303,11 @@ export function ArtistProfile({ artist, onNavigate }: ArtistProfileProps) {
                   <motion.div
                     key={index}
                     whileHover={{ scale: 1.05, y: -5 }}
+                    onClick={() => onNavigate?.('playlist', {
+                      title: single.title,
+                      description: `Single by ${artist.name}`,
+                      imageUrl: single.imageUrl,
+                    })}
                     className="group cursor-pointer w-64"
                   >
                     <div className="relative bg-[#1a1a1a] rounded-2xl overflow-hidden mb-4 aspect-square">
