@@ -158,57 +158,11 @@ export function ProfilePage({ onNavigate, onLogout }: ProfilePageProps) {
     songs: 342,
   };
 
-  const userPlaylists = [
-    {
-      title: 'My Favorites 2025',
-      description: 'Best tracks of the year',
-      imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=200',
-    },
-    {
-      title: 'Chill Vibes',
-      description: 'Relaxing beats',
-      imageUrl: 'https://images.unsplash.com/photo-1662012061995-0cd4a7ef2d12?w=200',
-    },
-    {
-      title: 'Workout Mix',
-      description: 'High energy tracks',
-      imageUrl: 'https://images.unsplash.com/photo-1740459057005-65f000db582f?w=200',
-    },
-    {
-      title: 'Late Night Drive',
-      description: 'Perfect for cruising',
-      imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200',
-    },
-    {
-      title: 'Study Focus',
-      description: 'Concentration music',
-      imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200',
-    },
-    {
-      title: 'Party Anthems',
-      description: 'Dance all night',
-      imageUrl: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=200',
-    },
-  ];
-
-  const likedSongs = [
-    { title: 'Cosmic Waves', artist: 'Nova Pulse', plays: '45.2M', duration: '3:42', imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=200' },
-    { title: 'Neon Dreams', artist: 'Synthwave', plays: '38.7M', duration: '4:15', imageUrl: 'https://images.unsplash.com/photo-1744907529553-dc603ead4d4e?w=200' },
-    { title: 'Electric Soul', artist: 'Echo Dreams', plays: '32.1M', duration: '3:58', imageUrl: 'https://images.unsplash.com/photo-1740459057005-65f000db582f?w=200' },
-    { title: 'Midnight Drive', artist: 'Bass Drop', plays: '28.9M', duration: '4:23', imageUrl: 'https://images.unsplash.com/photo-1662012061995-0cd4a7ef2d12?w=200' },
-    { title: 'Digital Horizon', artist: 'Crystal Sound', plays: '24.5M', duration: '3:36', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200' },
-    { title: 'Starlight Echo', artist: 'Nova Pulse', plays: '21.3M', duration: '4:01', imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200' },
-  ];
-
-  const followedArtists = [
-    { name: 'Nova Pulse', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nova', genre: 'Electronic' },
-    { name: 'Synthwave', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=synth', genre: 'Retro Wave' },
-    { name: 'Echo Dreams', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=echo', genre: 'Ambient' },
-    { name: 'Bass Drop', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bass', genre: 'Dubstep' },
-    { name: 'Crystal Sound', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=crystal', genre: 'Chill' },
-  ];
-
-  const favoriteGenres = ['Electronic', 'House', 'Ambient', 'Synthwave'];
+  // User playlists, liked songs, followed artists, and favorite genres will be fetched from API in the future
+  const userPlaylists: any[] = [];
+  const likedSongs: any[] = [];
+  const followedArtists: any[] = [];
+  const favoriteGenres: string[] = [];
 
   return (
     <div ref={containerRef} className="flex-1 h-full overflow-auto">

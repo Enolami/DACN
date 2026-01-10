@@ -1,69 +1,149 @@
 import { ImageWithFallback } from './img/ImageWithFallback';
-import { Play, Heart, Download, Share2, MoreVertical, ChevronDown, Clock } from 'lucide-react';
+import { Play, Heart, Download, Share2, MoreVertical, ChevronDown, Clock, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { TrackTable } from './TrackTable';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from './ui/collapsible';
+import { getSongs, formatDuration } from '../../services/api';
+import type { Song, Album } from '../../types/music';
 
 interface AlbumDetailProps {
   album: {
-    title: string;
-    artist: string;
-    imageUrl: string;
+    id?: string;
+    title?: string;
+    artist?: string;
+    imageUrl?: string;
     year?: string;
     genre?: string;
     totalTracks?: number;
     duration?: string;
+    album?: Album; // Full album object if passed
   };
   onNavigate?: (page: string, data?: any) => void;
 }
 
-export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
+export function AlbumDetail({ album: initialAlbum, onNavigate }: AlbumDetailProps) {
+  const [album, setAlbum] = useState<Album | null>(null);
+  const [albumSongs, setAlbumSongs] = useState<Song[]>([]);
   const [isLiked, setIsLiked] = useState(false);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock tracks data
-  const tracks = [
-    { number: 1, title: 'Cosmic Waves', artist: album.artist, album: album.title, duration: '3:42', liked: true },
-    { number: 2, title: 'Neon Dreams', artist: album.artist, album: album.title, duration: '4:15' },
-    { number: 3, title: 'Electric Soul', artist: album.artist, album: album.title, duration: '3:58', liked: true },
-    { number: 4, title: 'Midnight Drive', artist: album.artist, album: album.title, duration: '4:23' },
-    { number: 5, title: 'Digital Horizon', artist: album.artist, album: album.title, duration: '3:36' },
-    { number: 6, title: 'Stellar Pulse', artist: album.artist, album: album.title, duration: '4:01' },
-    { number: 7, title: 'Cybernetic Dreams', artist: album.artist, album: album.title, duration: '3:47', liked: true },
-    { number: 8, title: 'Aurora Lights', artist: album.artist, album: album.title, duration: '4:18' },
-    { number: 9, title: 'Quantum Leap', artist: album.artist, album: album.title, duration: '3:52' },
-    { number: 10, title: 'Future Echoes', artist: album.artist, album: album.title, duration: '4:07' },
-    { number: 11, title: 'Synthwave Sunset', artist: album.artist, album: album.title, duration: '3:29' },
-    { number: 12, title: 'Binary Stars', artist: album.artist, album: album.title, duration: '4:34' },
-  ];
+  // Fetch album data and songs
+  useEffect(() => {
+    const fetchAlbumData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Get album ID
+        const albumId = initialAlbum.id || initialAlbum.album?.id;
+        if (!albumId) {
+          setError('Album ID is required');
+          setLoading(false);
+          return;
+        }
+
+        // If we have a full album object, use it
+        if (initialAlbum.album) {
+          setAlbum(initialAlbum.album);
+        }
+
+        // Fetch all songs and filter by album
+        const allSongs = await getSongs();
+        const filteredSongs = allSongs.filter(
+          song => song.album_id === albumId || song.album?.id === albumId
+        );
+
+        if (filteredSongs.length === 0 && !initialAlbum.album) {
+          setError('No songs found for this album');
+          setLoading(false);
+          return;
+        }
+
+        // Extract album from first song if not already set
+        if (!initialAlbum.album && filteredSongs.length > 0) {
+          const albumData = filteredSongs[0].album;
+          if (albumData) {
+            setAlbum(albumData);
+          }
+        }
+
+        setAlbumSongs(filteredSongs);
+      } catch (err) {
+        console.error('Error fetching album data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load album');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlbumData();
+  }, [initialAlbum.id, initialAlbum.album]);
+
+  // Calculate total duration
+  const totalDurationSeconds = albumSongs.reduce((sum, song) => sum + song.duration, 0);
+  const totalDuration = formatDuration(totalDurationSeconds);
+
+  // Transform songs to Track format
+  const tracksForTable = albumSongs.map((song, index) => ({
+    number: index + 1,
+    title: song.title,
+    artist: song.artist_name || song.artist?.stage_name || 'Unknown Artist',
+    album: album?.title || initialAlbum.title || 'Unknown Album',
+    duration: formatDuration(song.duration),
+    liked: false,
+  }));
+
+  if (loading) {
+    return (
+      <ScrollArea className="flex-1 h-full">
+        <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
+            <p className="text-gray-400">Loading album...</p>
+          </div>
+        </div>
+      </ScrollArea>
+    );
+  }
+
+  if (error || !album) {
+    return (
+      <ScrollArea className="flex-1 h-full">
+        <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-red-400">Error: {error || 'Album not found'}</p>
+            <Button onClick={() => onNavigate?.('home')} variant="outline">
+              Go Home
+            </Button>
+          </div>
+        </div>
+      </ScrollArea>
+    );
+  }
+
+  const albumTitle = album.title || initialAlbum.title || 'Unknown Album';
+  const artistName = album.artist_name || album.artist?.stage_name || initialAlbum.artist || 'Unknown Artist';
+  const artistId = album.artist_id || album.artist?.id;
+  const imageUrl = album.cover_pic_url || initialAlbum.imageUrl || null;
+  const releaseYear = album.release_date ? new Date(album.release_date).getFullYear() : (initialAlbum.year ? parseInt(initialAlbum.year) : null);
+  const totalTracks = albumSongs.length;
 
   const credits = [
-    { role: 'Producer', name: 'Echo Sound Labs' },
-    { role: 'Recording Engineer', name: 'Alex Rivers' },
-    { role: 'Mastering Engineer', name: 'Sound Forge Studio' },
-    { role: 'Label', name: 'Neon Records' },
-    { role: 'Copyright', name: '© 2024 Neon Records. All rights reserved.' },
-    { role: 'Recorded', name: 'Studio X, Los Angeles, CA' },
+    { role: 'Artist', name: artistName },
+    { role: 'Album', name: albumTitle },
+    { role: 'Release Date', name: releaseYear ? releaseYear.toString() : 'Unknown' },
+    { role: 'Tracks', name: `${totalTracks} ${totalTracks === 1 ? 'song' : 'songs'}` },
+    { role: 'Total Duration', name: totalDuration },
   ];
-
-  const moreAlbums = [
-    { title: 'Retrograde', year: '2023', imageUrl: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=180' },
-    { title: 'Digital Hearts', year: '2022', imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=180' },
-    { title: 'Night Rider', year: '2021', imageUrl: 'https://images.unsplash.com/photo-1619983081563-430f63602796?w=180' },
-    { title: 'Future Sound', year: '2020', imageUrl: 'https://images.unsplash.com/photo-1611339555312-e607c8352fd7?w=180' },
-  ];
-
-  const totalDuration = album.duration || '48:32';
-  const totalTracks = album.totalTracks || tracks.length;
-  const year = album.year || '2024';
-  const genre = album.genre || 'Electronic';
 
   return (
     <ScrollArea className="flex-1 h-full">
@@ -74,8 +154,8 @@ export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
           {/* Layer 1: Blurred album art */}
           <div className="absolute inset-0 scale-150 blur-[80px] opacity-30">
             <ImageWithFallback
-              src={album.imageUrl}
-              alt={album.title}
+              src={imageUrl || undefined}
+              alt={albumTitle}
               className="w-full h-full object-cover"
             />
           </div>
@@ -106,8 +186,8 @@ export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
                 }}
               >
                 <ImageWithFallback
-                  src={album.imageUrl}
-                  alt={album.title}
+                  src={imageUrl || undefined}
+                  alt={albumTitle}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -122,13 +202,16 @@ export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
               >
                 <p className="text-sm text-white/60 mb-2">Album</p>
                 <h1 className="text-white text-5xl mb-4 max-w-[600px] leading-tight">
-                  {album.title}
+                  {albumTitle}
                 </h1>
                 <button
-                  onClick={() => onNavigate?.('artist', { name: album.artist, genre })}
+                  onClick={() => onNavigate?.('artist', { 
+                    id: artistId,
+                    stage_name: artistName 
+                  })}
                   className="text-xl text-gray-400 hover:text-[#00ff88] transition-colors mb-3 hover:underline underline-offset-4"
                 >
-                  {album.artist}
+                  {artistName}
                 </button>
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -136,11 +219,13 @@ export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
                   transition={{ delay: 0.4 }}
                   className="flex items-center gap-2 text-sm text-gray-500 mb-8"
                 >
-                  <span>{year}</span>
-                  <span className="opacity-60">•</span>
-                  <span>{genre}</span>
-                  <span className="opacity-60">•</span>
-                  <span>{totalTracks} tracks</span>
+                  {releaseYear && (
+                    <>
+                      <span>{releaseYear}</span>
+                      <span className="opacity-60">•</span>
+                    </>
+                  )}
+                  <span>{totalTracks} {totalTracks === 1 ? 'track' : 'tracks'}</span>
                   <span className="opacity-60">•</span>
                   <span>{totalDuration}</span>
                 </motion.div>
@@ -217,7 +302,15 @@ export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
         </div>
 
         {/* Track Table */}
-        <TrackTable tracks={tracks} onNavigate={onNavigate} />
+        {albumSongs.length > 0 ? (
+          <TrackTable tracks={tracksForTable} onNavigate={onNavigate} />
+        ) : (
+          <div className="text-center py-16">
+            <Clock className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-white text-xl mb-2">No tracks found</h3>
+            <p className="text-gray-400">This album has no songs yet</p>
+          </div>
+        )}
       </div>
 
       {/* Album Credits Section */}
@@ -252,46 +345,15 @@ export function AlbumDetail({ album, onNavigate }: AlbumDetailProps) {
         </Collapsible>
       </div>
 
-      {/* More Albums Section */}
-      <div className="max-w-[1400px] mx-auto px-20 pb-20">
-        <h2 className="text-white text-3xl mb-6">More from {album.artist}</h2>
-        <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide">
-          {moreAlbums.map((moreAlbum, index) => (
-            <motion.div
-              key={index}
-              whileHover={{ scale: 1.05 }}
-              className="flex-shrink-0 cursor-pointer group"
-              onClick={() =>
-                onNavigate?.('album', {
-                  title: moreAlbum.title,
-                  artist: album.artist,
-                  imageUrl: moreAlbum.imageUrl,
-                  year: moreAlbum.year,
-                })
-              }
-            >
-              <div className="w-[180px]">
-                <div
-                  className="w-[180px] h-[180px] rounded-xl overflow-hidden mb-3 transition-shadow duration-300"
-                  style={{
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-                  }}
-                >
-                  <ImageWithFallback
-                    src={moreAlbum.imageUrl}
-                    alt={moreAlbum.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-                <p className="text-white group-hover:text-[#00ff88] transition-colors truncate">
-                  {moreAlbum.title}
-                </p>
-                <p className="text-sm text-gray-400">{moreAlbum.year}</p>
-              </div>
-            </motion.div>
-          ))}
+      {/* More Albums Section - Show other albums by same artist */}
+      {artistId && (
+        <div className="max-w-[1400px] mx-auto px-20 pb-20">
+          <h2 className="text-white text-3xl mb-6">More from {artistName}</h2>
+          {/* This would require fetching other albums by the artist */}
+          {/* For now, we'll leave it empty or show a placeholder */}
+          <p className="text-gray-400">Other albums by this artist will appear here</p>
         </div>
-      </div>
+      )}
     </ScrollArea>
   );
 }

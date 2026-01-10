@@ -7,6 +7,7 @@ import { UsernameSetupPage } from './components/Login/UsernameSetupPage';
 import { ForgotPasswordPage } from './components/Login/ForgotPasswordPage';
 import { ResetPasswordPage } from './components/Login/ResetPasswordPage';
 import { HomePage } from './components/Login/HomePage';
+import { SearchPage } from './components/Login/SearchPage';
 import { LeftSidebar } from './components/Login/LeftSidebar';
 import { RightPanel } from './components/Login/RightPanel';
 import { TopNavigation } from './components/Login/TopNavigation';
@@ -18,7 +19,7 @@ import { SongDetail } from './components/Login/SongDetail';
 import { MusicPlayer } from './components/Login/MusicPlayer';
 import { NowPlayingFullscreen } from './components/Login/NowPlayingFullscreen';
 
-type View = 'login' | 'signup' | 'verify-otp' | 'forgot-password' | 'reset-password' | 'verify' | 'set-username' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song';
+type View = 'login' | 'signup' | 'verify-otp' | 'forgot-password' | 'reset-password' | 'verify' | 'set-username' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song' | 'search';
 
 interface NavigationState {
   view: View;
@@ -44,13 +45,7 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   
   // Current playing song - shared across app
-  const [currentSong, setCurrentSong] = useState<any>({
-    title: 'Neon Dreams',
-    artist: 'Cyber Pulse',
-    album: 'Digital Horizons',
-    duration: '3:42',
-    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100'
-  });
+  const [currentSong, setCurrentSong] = useState<any>(null);
 
   // Auto-login on app load if a token already exists (remember me or session)
   useEffect(() => {
@@ -186,7 +181,9 @@ function App() {
     } else if (page === 'song') {
       // Navigate to song detail
       setSelectedSong(data);
-      setCurrentSong(data); // Update current playing song
+      // Update current playing song - handle both full song object and wrapped format
+      const songToPlay = data?.song || data;
+      setCurrentSong(songToPlay);
       setIsPlaying(true); // Auto-play when navigating to song
       setCurrentView('song');
       setCurrentPage('song');
@@ -203,6 +200,10 @@ function App() {
       });
       setCurrentView('playlist');
       setCurrentPage('playlist');
+    } else if (page === 'search') {
+      // Navigate to search page
+      setCurrentView('search');
+      setCurrentPage('search');
     } else {
       // Update current page for sidebar navigation
       setCurrentPage(page);
@@ -464,7 +465,7 @@ function App() {
                 />
                 {renderContent()}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -499,7 +500,7 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -532,7 +533,7 @@ function App() {
                   onLogout={handleLogout}
                 />
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -567,7 +568,7 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -597,12 +598,50 @@ function App() {
                 />
                 {selectedSong && (
                   <SongDetail 
-                    song={selectedSong}
+                    initialSong={selectedSong}
                     onNavigate={handleNavigate}
+                    onPlaySong={(song) => {
+                      console.log('onPlaySong called with:', song);
+                      const songToPlay = song;
+                      setCurrentSong(songToPlay);
+                      setIsPlaying(true);
+                      // Also update selectedSong to keep state in sync
+                      setSelectedSong(songToPlay);
+                    }}
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+            </div>
+            <MusicPlayer 
+              onNavigate={handleNavigate}
+              onExpandClick={handleExpandPlayer}
+              currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={setIsPlaying}
+            />
+          </div>
+        );
+      case 'search':
+        return (
+          <div className="flex h-screen bg-black overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              <LeftSidebar 
+                onNavigate={handleSidebarNavigate}
+                currentPage={currentPage}
+              />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <TopNavigation 
+                  onNavigate={handleNavigate}
+                  currentPage={currentPage}
+                  onBack={handleBack}
+                  onForward={handleForward}
+                  canGoBack={canGoBack}
+                  canGoForward={canGoForward}
+                />
+                <SearchPage onNavigate={handleNavigate} />
+              </div>
+              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}

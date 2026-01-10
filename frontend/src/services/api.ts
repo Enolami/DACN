@@ -1,3 +1,14 @@
+import type { 
+  Song, 
+  SongDetail, 
+  Album, 
+  Artist, 
+  RecommendationsResponse,
+  LikedSong,
+  Follower,
+  JamendoSearchResponse
+} from '../types/music';
+
 const API_URL = 'http://localhost:8000';
 
 const ACCESS_TOKEN_KEY = 'authAccessToken';
@@ -507,4 +518,250 @@ export const removeAvatar = async (): Promise<ProfileData> => {
   }
 
   return data;
+};
+
+// --- Music APIs ---
+
+
+
+/**
+ * Get all songs from the database
+ */
+export const getSongs = async (): Promise<Song[]> => {
+  const response = await apiFetch('/music/songs/');
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to fetch songs');
+  }
+
+  return data;
+};
+
+/**
+ * Get detailed information about a specific song (includes MFCC vector)
+ */
+export const getSong = async (songId: string): Promise<SongDetail> => {
+  const response = await apiFetch(`/music/songs/${songId}/`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to fetch song');
+  }
+
+  return data;
+};
+
+/**
+ * Get music recommendations based on a song
+ * @param songId - UUID of the song to get recommendations for
+ * @param topN - Number of recommendations to return (default: 5)
+ * @param minSimilarity - Minimum similarity score (default: 0.0)
+ */
+export const getRecommendations = async (
+  songId: string, 
+  topN: number = 5, 
+  minSimilarity: number = 0.0
+): Promise<RecommendationsResponse> => {
+  const response = await apiFetch(
+    `/music/songs/${songId}/recommendations/?top_n=${topN}&min_similarity=${minSimilarity}`
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to fetch recommendations');
+  }
+
+  return data;
+};
+
+/**
+ * Like a song
+ */
+export const likeSong = async (songId: string): Promise<LikedSong> => {
+  const response = await apiFetch(`/music/songs/${songId}/like/`, {
+    method: 'POST',
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to like song');
+  }
+
+  return data;
+};
+
+/**
+ * Unlike a song
+ */
+export const unlikeSong = async (songId: string): Promise<{ message: string }> => {
+  const response = await apiFetch(`/music/songs/${songId}/unlike/`, {
+    method: 'DELETE',
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to unlike song');
+  }
+
+  return data;
+};
+
+/**
+ * Get all songs liked by the current user
+ */
+export const getLikedSongs = async (): Promise<LikedSong[]> => {
+  const response = await apiFetch('/music/liked-songs/');
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to fetch liked songs');
+  }
+
+  return data;
+};
+
+/**
+ * Follow an artist
+ */
+export const followArtist = async (artistId: string): Promise<Follower> => {
+  const response = await apiFetch(`/music/artists/${artistId}/follow/`, {
+    method: 'POST',
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to follow artist');
+  }
+
+  return data;
+};
+
+/**
+ * Unfollow an artist
+ */
+export const unfollowArtist = async (artistId: string): Promise<{ message: string }> => {
+  const response = await apiFetch(`/music/artists/${artistId}/unfollow/`, {
+    method: 'DELETE',
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to unfollow artist');
+  }
+
+  return data;
+};
+
+/**
+ * Get all artists followed by the current user
+ */
+export const getFollowedArtists = async (): Promise<Follower[]> => {
+  const response = await apiFetch('/music/followed-artists/');
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to fetch followed artists');
+  }
+
+  return data;
+};
+
+/**
+ * Search for tracks on Jamendo
+ * @param query - Search query (track name)
+ */
+export const searchJamendo = async (query: string): Promise<JamendoSearchResponse> => {
+  const response = await apiFetch(`/music/jamendo/search/?q=${encodeURIComponent(query)}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to search Jamendo');
+  }
+
+  return data;
+};
+
+/**
+ * Import a track from Jamendo into the database
+ * @param jamendoId - Jamendo track ID
+ */
+export const importFromJamendo = async (jamendoId: string): Promise<Song> => {
+  const response = await apiFetch('/music/jamendo/import/', {
+    method: 'POST',
+    body: JSON.stringify({ id: jamendoId }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to import track from Jamendo');
+  }
+
+  // If song already exists, data.song will be present
+  return data.song || data;
+};
+
+/**
+ * Helper function to format duration from seconds to MM:SS
+ */
+export const formatDuration = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Get the audio streaming URL for a song
+ */
+export const getAudioStreamUrl = (songId: string): string => {
+  return `${API_URL}/music/stream/${songId}/`;
+};
+
+/**
+ * Helper function to transform song data for frontend display
+ * With enhanced serializers, album and artist are already included
+ */
+export const transformSongForDisplay = (song: Song): {
+  id: string;
+  title: string;
+  albumId: string | null;
+  artistId: string | null;
+  duration: number;
+  durationFormatted: string;
+  audioUrl: string;
+  imageUrl: string | null;
+  jamendoId?: string | null;
+} => {
+  return {
+    id: song.id,
+    title: song.title,
+    albumId: song.album_id || (song.album ? song.album.id : null),
+    artistId: song.artist_id || (song.artist ? song.artist.id : null),
+    duration: song.duration,
+    durationFormatted: formatDuration(song.duration),
+    audioUrl: song.audio_file_url || '',
+    imageUrl: song.image_url || (song.album ? song.album.cover_pic_url : null),
+    jamendoId: song.jamendo_id || null,
+  };
+};
+
+/**
+ * Helper to check if a song is liked by the current user
+ * This should be called after fetching liked songs
+ */
+export const isSongLiked = (songId: string, likedSongs: LikedSong[]): boolean => {
+  return likedSongs.some(ls => ls.song_id === songId);
+};
+
+/**
+ * Helper to check if an artist is followed by the current user
+ * This should be called after fetching followed artists
+ */
+export const isArtistFollowed = (artistId: string, followedArtists: Follower[]): boolean => {
+  return followedArtists.some(fa => fa.artist_id === artistId);
 };

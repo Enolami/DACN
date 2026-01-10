@@ -17,16 +17,8 @@ interface PlaylistDetailProps {
 }
 
 export function PlaylistDetail({ playlist, onNavigate }: PlaylistDetailProps) {
-  const tracks = [
-    { number: 1, title: 'Cosmic Waves', artist: 'Nova Pulse', album: 'Interstellar', duration: '3:42', liked: true },
-    { number: 2, title: 'Neon Dreams', artist: 'Synthwave', album: 'Retrograde', duration: '4:15' },
-    { number: 3, title: 'Electric Soul', artist: 'Echo Dreams', album: 'Digital Hearts', duration: '3:58', liked: true },
-    { number: 4, title: 'Midnight Drive', artist: 'Crystal Sound', album: 'Night Rider', duration: '4:23' },
-    { number: 5, title: 'Digital Horizon', artist: 'Bass Drop', album: 'Future Sound', duration: '3:36' },
-    { number: 6, title: 'Stellar Pulse', artist: 'Nova Pulse', album: 'Interstellar', duration: '4:01' },
-    { number: 7, title: 'Cybernetic Dreams', artist: 'Synthwave', album: 'Retrograde', duration: '3:47', liked: true },
-    { number: 8, title: 'Aurora Lights', artist: 'Echo Dreams', album: 'Northern Sky', duration: '4:18' },
-  ];
+  // Playlist tracks will be fetched from API in the future
+  const tracks: any[] = [];
 
   const suggestedPlaylists = [
     {

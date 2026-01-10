@@ -55,44 +55,11 @@ import {
     const [activeTab, setActiveTab] = useState('overview');
     const lyricsRef = useRef<HTMLDivElement>(null);
   
-    const lyrics = [
-      { time: 0, text: "Lost in the digital haze" },
-      { time: 15, text: "Electric dreams light my way" },
-      { time: 30, text: "Through the neon city nights" },
-      { time: 45, text: "We dance until the morning light" },
-      { time: 60, text: "Synthetic love in binary" },
-      { time: 75, text: "Our hearts beat in harmony" },
-      { time: 90, text: "Forever young, forever free" },
-      { time: 105, text: "In this AI symphony" },
-      { time: 120, text: "Code runs through my veins" },
-      { time: 135, text: "Breaking through these digital chains", current: true },
-      { time: 150, text: "In the metaverse we play" },
-      { time: 165, text: "Dancing till the break of day" },
-      { time: 180, text: "Algorithms set us free" },
-      { time: 195, text: "In perfect harmony" },
-      { time: 210, text: "This is our destiny" },
-    ];
-  
-    const topSongs = [
-      { id: 1, title: "Digital Dreams", plays: "125M", duration: "3:42" },
-      { id: 2, title: "Neon Nights", plays: "98M", duration: "4:15" },
-      { id: 3, title: "Binary Love", plays: "87M", duration: "3:28" },
-      { id: 4, title: "Cyber Soul", plays: "76M", duration: "4:02" },
-      { id: 5, title: "Electric Heart", plays: "65M", duration: "3:55" },
-    ];
-  
-    const relatedArtists = [
-      { id: 1, name: "Cyber Pulse", followers: "2.3M", image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200" },
-      { id: 2, name: "Digital Echo", followers: "1.8M", image: "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=200" },
-      { id: 3, name: "Synthwave Dream", followers: "3.1M", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200" },
-      { id: 4, name: "Neon Vibes", followers: "1.5M", image: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=200" },
-    ];
-  
-    const events = [
-      { id: 1, date: "Nov 15, 2025", venue: "Cyber Arena, Tokyo", city: "Tokyo, JP" },
-      { id: 2, date: "Nov 22, 2025", venue: "Digital Dome, Seoul", city: "Seoul, KR" },
-      { id: 3, date: "Dec 01, 2025", venue: "Neon Hall, Los Angeles", city: "Los Angeles, US" },
-    ];
+    // Lyrics, top songs, related artists, and events will be fetched from API in the future
+    const lyrics: any[] = [];
+    const topSongs: any[] = [];
+    const relatedArtists: any[] = [];
+    const events: any[] = [];
   
     // Generate visualizer bars
     useEffect(() => {

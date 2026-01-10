@@ -100,6 +100,9 @@ class Song(models.Model):
     # Public URL to stream this audio from (Jamendo URL or our own media URL).
     audio_file_url = models.URLField(max_length=500, blank=True)
 
+    # Jamendo track ID (for tracking imports and preventing duplicates)
+    jamendo_id = models.CharField(max_length=100, blank=True, null=True, unique=True, db_index=True)
+
     # Stored MFCC vector (content-based features for recommendations).
     mfcc_vector = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -171,3 +174,71 @@ class PlaylistSong(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.playlist.title} - {self.song.title}"
+
+
+class LikedSong(models.Model):
+    """
+    User likes a specific Song.
+    
+    Schema reference:
+      LikedSong {
+        id string pk
+        user_id User [ref, required]
+        song_id Song [ref, required]
+        liked_at datetime
+      }
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="liked_songs"
+    )
+    song = models.ForeignKey(
+        Song,
+        on_delete=models.CASCADE,
+        related_name="liked_by_users"
+    )
+    liked_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ("user", "song")
+        ordering = ["-liked_at"]
+    
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.user.username} likes {self.song.title}"
+
+
+class Follower(models.Model):
+    """
+    User follows an Artist.
+    
+    Schema reference:
+      Follower {
+        id string pk
+        user_id User [ref, required]   // The "Fan"
+        artist_id Artist [ref, required] // The "Idol"
+        followed_at datetime
+      }
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="following_artists"
+    )
+    artist = models.ForeignKey(
+        Artist,
+        on_delete=models.CASCADE,
+        related_name="followers"
+    )
+    followed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ("user", "artist")
+        ordering = ["-followed_at"]
+    
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.user.username} follows {self.artist.stage_name}"
