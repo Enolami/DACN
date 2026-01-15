@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, ListMusic, Maximize2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, ListMusic } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
 import { WaveformAnimation } from './WaveformAnimation';
@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 
 interface MusicPlayerProps {
-  onExpandClick?: () => void;
   onNavigate?: (page: string, data?: any) => void;
   currentSong?: {
     title: string;
@@ -19,7 +18,7 @@ interface MusicPlayerProps {
   onPlayPause?: (playing: boolean) => void;
 }
 
-export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause }: MusicPlayerProps) {
+export function MusicPlayer({ onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(externalIsPlaying);
   
   // Sync with external state
@@ -41,7 +40,7 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying:
     artist: 'Cyber Pulse',
     album: 'Digital Horizons',
     duration: '3:42',
-    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100'
+    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=600'
   };
 
   return (
@@ -54,7 +53,7 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying:
         {/* Album Artwork Thumbnail */}
         <div className="w-14 h-14 rounded-md overflow-hidden bg-[#1a1a1a] flex-shrink-0 shadow-lg">
           <img
-            src={song.imageUrl || 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100'}
+            src={song.imageUrl || 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=600'}
             alt={song.title}
             className="w-full h-full object-cover"
           />
@@ -151,17 +150,6 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying:
 
       {/* Right - Volume & Queue */}
       <div className="flex items-center gap-3 w-80 justify-end">
-        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onExpandClick}
-            className="w-9 h-9 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </Button>
-        </motion.div>
-
         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
           <Button
             size="icon"

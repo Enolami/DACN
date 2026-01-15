@@ -16,7 +16,6 @@ import { PlaylistDetail } from './components/Login/PlaylistDetail';
 import { LibraryPage } from './components/Login/LibraryPage';
 import { SongDetail } from './components/Login/SongDetail';
 import { MusicPlayer } from './components/Login/MusicPlayer';
-import { NowPlayingFullscreen } from './components/Login/NowPlayingFullscreen';
 
 type View = 'login' | 'signup' | 'verify-otp' | 'forgot-password' | 'reset-password' | 'verify' | 'set-username' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song';
 
@@ -36,7 +35,6 @@ function App() {
   const [selectedArtist, setSelectedArtist] = useState<any>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
   const [selectedSong, setSelectedSong] = useState<any>(null);
-  const [showNowPlaying, setShowNowPlaying] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   
   // Navigation history
@@ -49,7 +47,7 @@ function App() {
     artist: 'Cyber Pulse',
     album: 'Digital Horizons',
     duration: '3:42',
-    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100'
+    imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=600'
   });
 
   // Auto-login on app load if a token already exists (remember me or session)
@@ -102,7 +100,6 @@ function App() {
     setSelectedArtist(null);
     setSelectedPlaylist(null);
     setSelectedSong(null);
-    setShowNowPlaying(false);
     setIsPlaying(false);
     setHistory([]);
     setHistoryIndex(-1);
@@ -284,11 +281,6 @@ function App() {
   const canGoBack = historyIndex > 0;
   const canGoForward = historyIndex < history.length - 1;
 
-  const handleExpandPlayer = () => {
-    // Open Now Playing Fullscreen
-    setShowNowPlaying(true);
-  };
-
   const handleSidebarNavigate = (page: string) => {
     // Save current state to history before navigating
     if (currentView !== 'login' && currentView !== 'signup' && currentView !== 'forgot-password' && 
@@ -468,7 +460,6 @@ function App() {
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
-              onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -509,7 +500,6 @@ function App() {
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
-              onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -548,7 +538,6 @@ function App() {
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
-              onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -589,7 +578,6 @@ function App() {
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
-              onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -630,7 +618,6 @@ function App() {
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
-              onExpandClick={handleExpandPlayer}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -651,15 +638,6 @@ function App() {
   return (
     <>
       {renderView()}
-      {showNowPlaying && (
-        <NowPlayingFullscreen 
-          onClose={() => setShowNowPlaying(false)}
-          currentSong={currentSong}
-          isPlaying={isPlaying}
-          onPlayPause={setIsPlaying}
-          onNavigate={handleNavigate}
-        />
-      )}
     </>
   );
 }

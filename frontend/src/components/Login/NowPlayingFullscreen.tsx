@@ -488,7 +488,7 @@ import {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-lg overflow-hidden">
                       <ImageWithFallback
-                        src="https://images.unsplash.com/photo-1644855640845-ab57a047320e?w=100"
+                        src="https://images.unsplash.com/photo-1644855640845-ab57a047320e?w=600"
                         alt="Album"
                         className="w-full h-full object-cover"
                       />

@@ -10,17 +10,17 @@ interface RightPanelProps {
 
 export function RightPanel({ onNavigate, onSongSelect }: RightPanelProps) {
   const upNext = [
-    { id: 1, title: 'Neon Dreams', artist: 'Nova Pulse', duration: '3:42', imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100' },
-    { id: 2, title: 'Electric Soul', artist: 'Synthwave', duration: '4:15', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100' },
-    { id: 3, title: 'Midnight Drive', artist: 'Echo Dreams', duration: '3:58', imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=100' },
-    { id: 4, title: 'Digital Horizon', artist: 'Crystal Sound', duration: '4:23', imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100' },
+    { id: 1, title: 'Neon Dreams', artist: 'Nova Pulse', duration: '3:42', imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=600' },
+    { id: 2, title: 'Electric Soul', artist: 'Synthwave', duration: '4:15', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600' },
+    { id: 3, title: 'Midnight Drive', artist: 'Echo Dreams', duration: '3:58', imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600' },
+    { id: 4, title: 'Digital Horizon', artist: 'Crystal Sound', duration: '4:23', imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600' },
   ];
 
   const recentlyPlayed = [
-    { id: 5, title: 'Cosmic Waves', artist: 'Nova Pulse', duration: '3:25', playedAt: '2 hours ago', imageUrl: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=100' },
-    { id: 6, title: 'Stellar Journey', artist: 'Synthwave', duration: '4:10', playedAt: '5 hours ago', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100' },
-    { id: 7, title: 'Neon Nights', artist: 'Echo Dreams', duration: '3:50', playedAt: 'Yesterday', imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=100' },
-    { id: 8, title: 'Digital Dreams', artist: 'Crystal Sound', duration: '4:05', playedAt: 'Yesterday', imageUrl: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=100' },
+    { id: 5, title: 'Cosmic Waves', artist: 'Nova Pulse', duration: '3:25', playedAt: '2 hours ago', imageUrl: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=600' },
+    { id: 6, title: 'Stellar Journey', artist: 'Synthwave', duration: '4:10', playedAt: '5 hours ago', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600' },
+    { id: 7, title: 'Neon Nights', artist: 'Echo Dreams', duration: '3:50', playedAt: 'Yesterday', imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600' },
+    { id: 8, title: 'Digital Dreams', artist: 'Crystal Sound', duration: '4:05', playedAt: 'Yesterday', imageUrl: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=600' },
   ];
 
   return (
