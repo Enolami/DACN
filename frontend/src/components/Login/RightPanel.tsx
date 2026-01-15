@@ -39,7 +39,7 @@ export function RightPanel({ onNavigate, onSongSelect }: RightPanelProps) {
           </TabsList>
         </div>
 
-        <TabsContent value="queue" className="flex-1 flex flex-col m-0 mt-4">
+        <TabsContent value="queue" className="flex-1 flex flex-col m-0 mt-4 data-[state=inactive]:hidden">
           <div className="px-6 pb-4">
             <h3 className="text-white text-sm font-medium">Up Next</h3>
             <p className="text-gray-400 text-xs mt-1">{upNext.length} songs in queue</p>
@@ -75,7 +75,7 @@ export function RightPanel({ onNavigate, onSongSelect }: RightPanelProps) {
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="history" className="flex-1 flex flex-col m-0 mt-4">
+        <TabsContent value="history" className="flex-1 flex flex-col m-0 mt-4 data-[state=inactive]:hidden">
           <div className="px-6 pb-4">
             <h3 className="text-white text-sm font-medium">Recently Played</h3>
             <p className="text-gray-400 text-xs mt-1">{recentlyPlayed.length} songs</p>
