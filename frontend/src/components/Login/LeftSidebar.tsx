@@ -32,7 +32,7 @@ export function LeftSidebar({ onNavigate, currentPage }: LeftSidebarProps) {
             <path d="M8 0L10.5 5.5L16 8L10.5 10.5L8 16L5.5 10.5L0 8L5.5 5.5L8 0Z" fill="currentColor"/>
           </svg>
         </div>
-        <span className="text-white">Music AI</span>
+        <span className="text-white">Soundly</span>
       </div>
 
       {/* Main Navigation */}

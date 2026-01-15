@@ -1,4 +1,4 @@
-import { Plus, Heart, ListMusic, ArrowUpDown, Filter, Search, MoreVertical, Play, Clock } from 'lucide-react';
+import { Plus, Heart, ListMusic, ArrowUpDown, Search, MoreVertical, Play, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { ImageWithFallback } from './img/ImageWithFallback';
@@ -21,9 +21,7 @@ interface LibraryPageProps {
 export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageProps) {
   const [songsSearchQuery, setSongsSearchQuery] = useState('');
   const [songsSortBy, setSongsSortBy] = useState('Recently Added');
-  const [songsFilter, setSongsFilter] = useState('All');
   const [generalSortBy, setGeneralSortBy] = useState('Recently Added');
-  const [generalFilter, setGeneralFilter] = useState('All');
 
   const playlists = [
     {
@@ -253,10 +251,6 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
                          song.artist.toLowerCase().includes(songsSearchQuery.toLowerCase()) ||
                          song.album.toLowerCase().includes(songsSearchQuery.toLowerCase());
     
-    if (songsFilter === 'Downloaded') return matchesSearch && song.isDownloaded;
-    if (songsFilter === 'Offline Available') return matchesSearch && song.isDownloaded;
-    if (songsFilter === 'Favorites') return matchesSearch && song.isLiked;
-    
     return matchesSearch;
   });
 
@@ -463,72 +457,42 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
                 {/* Sort Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="text-gray-400 hover:text-white gap-2 h-10">
+                    <Button 
+                      variant="ghost" 
+                      className={`gap-2 h-10 border transition-all duration-200 ${
+                        songsSortBy !== 'Recently Added' 
+                          ? 'text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/50 hover:bg-[#00ff88]/20' 
+                          : 'text-gray-400 hover:text-[#00ff88] hover:bg-[#1a1a1a] border-transparent hover:border-[#00ff88]/30'
+                      }`}
+                    >
                       <ArrowUpDown className="w-4 h-4" />
                       <span className="text-sm">{songsSortBy}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                  <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a] shadow-lg shadow-black/50">
                     <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                      className={`cursor-pointer transition-colors ${songsSortBy === 'Recently Added' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                       onClick={() => setSongsSortBy('Recently Added')}
                     >
                       Recently Added
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                      className={`cursor-pointer transition-colors ${songsSortBy === 'A → Z' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                       onClick={() => setSongsSortBy('A → Z')}
                     >
                       A → Z
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                      className={`cursor-pointer transition-colors ${songsSortBy === 'Artist' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                       onClick={() => setSongsSortBy('Artist')}
                     >
                       Artist
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                      className={`cursor-pointer transition-colors ${songsSortBy === 'Most Played' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                       onClick={() => setSongsSortBy('Most Played')}
                     >
                       Most Played
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Filter Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="text-gray-400 hover:text-white gap-2 h-10">
-                      <Filter className="w-4 h-4" />
-                      <span className="text-sm">{songsFilter}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                    <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                      onClick={() => setSongsFilter('All')}
-                    >
-                      All
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                      onClick={() => setSongsFilter('Downloaded')}
-                    >
-                      Downloaded
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                      onClick={() => setSongsFilter('Offline Available')}
-                    >
-                      Offline Available
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-[#2a2a2a]" />
-                    <DropdownMenuItem 
-                      className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                      onClick={() => setSongsFilter('Favorites')}
-                    >
-                      Favorites Only
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -669,69 +633,41 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-white text-4xl">{getCategoryTitle()}</h1>
           
-          {/* Show Sort/Filter only for non-Songs categories */}
+          {/* Show Sort only for non-Songs categories */}
           {category !== 'songs' && (
             <div className="flex items-center gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="text-gray-400 hover:text-white gap-2">
+                  <Button 
+                    variant="ghost" 
+                    className={`gap-2 border transition-all duration-200 ${
+                      generalSortBy !== 'Recently Added' 
+                        ? 'text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/50 hover:bg-[#00ff88]/20' 
+                        : 'text-gray-400 hover:text-[#00ff88] hover:bg-[#1a1a1a] border-transparent hover:border-[#00ff88]/30'
+                    }`}
+                  >
                     <ArrowUpDown className="w-4 h-4" />
                     <span className="text-sm">{generalSortBy}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a] shadow-lg shadow-black/50">
                   <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                    className={`cursor-pointer transition-colors ${generalSortBy === 'Recently Added' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                     onClick={() => setGeneralSortBy('Recently Added')}
                   >
                     Recently Added
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                    className={`cursor-pointer transition-colors ${generalSortBy === 'Alphabetical' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                     onClick={() => setGeneralSortBy('Alphabetical')}
                   >
                     Alphabetical
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
+                    className={`cursor-pointer transition-colors ${generalSortBy === 'Most Played' ? 'text-[#00ff88] bg-[#00ff88]/10' : 'text-gray-300 hover:text-[#00ff88] hover:bg-[#252525]'}`}
                     onClick={() => setGeneralSortBy('Most Played')}
                   >
                     Most Played
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="text-gray-400 hover:text-white gap-2">
-                    <Filter className="w-4 h-4" />
-                    <span className="text-sm">{generalFilter}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                  <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                    onClick={() => setGeneralFilter('All')}
-                  >
-                    All
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                    onClick={() => setGeneralFilter('Downloaded')}
-                  >
-                    Downloaded
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                    onClick={() => setGeneralFilter('Public')}
-                  >
-                    Public
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="text-gray-300 hover:text-white hover:bg-[#252525]"
-                    onClick={() => setGeneralFilter('Private')}
-                  >
-                    Private
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
