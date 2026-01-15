@@ -1,13 +1,43 @@
 from rest_framework import serializers
-from .models import Track
+from .models import Song
 
-class TrackSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Track
-        fields = ['id', 'title', 'artist', 'audio_file', 'uploaded_at', 'is_processed']
-        read_only_fields = ['uploader', 'is_processed', 'mfcc_data']
 
-class TrackDetailSerializer(serializers.ModelSerializer):
+class SongSerializer(serializers.ModelSerializer):
+    """
+    Basic serializer for listing/creating songs via the upload API.
+    """
+
     class Meta:
-        model = Track
-        fields = ['id', 'title', 'audio_file', 'mfcc_data', 'is_processed']
+        model = Song
+        fields = [
+            "id",
+            "title",
+            "album",
+            "duration",
+            "audio_file",
+            "audio_file_url",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["duration", "audio_file_url", "created_at", "updated_at"]
+
+
+class SongDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer exposing the stored MFCC vector as well.
+    """
+
+    class Meta:
+        model = Song
+        fields = [
+            "id",
+            "title",
+            "album",
+            "duration",
+            "audio_file",
+            "audio_file_url",
+            "mfcc_vector",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["mfcc_vector", "created_at", "updated_at"]

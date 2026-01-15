@@ -1,20 +1,29 @@
 import * as React from 'react';
-import { Lock, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Lock, Sparkles, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { verifyResetOTP, resetPassword, storeTokens } from '../../services/api';
 
 interface ResetPasswordPageProps {
-  onResetPassword: () => void;
+  onResetPassword: (access: string, refresh: string) => void;
   mode?: 'reset' | 'verify';
+  email?: string;
+  resetToken?: string | null;
 }
 
-export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPasswordPageProps) {
+export function ResetPasswordPage({ onResetPassword, mode = 'reset', email: propEmail = '', resetToken: propResetToken = null }: ResetPasswordPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
+  const [email, setEmail] = useState(propEmail);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [resetToken, setResetToken] = useState<string | null>(propResetToken);
 
   const handleCodeChange = (index: number, value: string) => {
     if (value.length > 1) return;
@@ -35,6 +44,85 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
       prevInput?.focus();
     }
   };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const code = verificationCode.join('');
+    if (code.length !== 6) {
+      setError('Please enter the complete 6-digit code');
+      return;
+    }
+
+    if (!email) {
+      setError('Email is required');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await verifyResetOTP(email, code);
+      setResetToken(data.reset_token);
+      // Switch to reset mode by calling onResetPassword with token
+      // The parent will handle switching to reset mode
+      onResetPassword(data.reset_token, '');
+    } catch (err: any) {
+      setError(err.message || 'Invalid or expired code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!newPassword || !confirmPassword) {
+      setError('Please enter both password fields');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (!resetToken) {
+      setError('Reset token is missing. Please verify your code again.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await resetPassword(newPassword, confirmPassword, resetToken);
+      // Store tokens and notify parent
+      storeTokens(data.access, data.refresh, true);
+      onResetPassword(data.access, data.refresh);
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update email and resetToken when props change
+  React.useEffect(() => {
+    if (propEmail) {
+      setEmail(propEmail);
+    }
+  }, [propEmail]);
+
+  React.useEffect(() => {
+    if (propResetToken) {
+      setResetToken(propResetToken);
+    }
+  }, [propResetToken]);
 
   return (
     <div className="min-h-screen w-full bg-black flex items-center justify-center relative overflow-hidden">
@@ -98,8 +186,18 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
               <h1 className="text-white text-center text-3xl mb-2">Reset Your Password</h1>
               <p className="text-gray-400 text-center mb-8">Enter your new password below</p>
 
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <p className="text-red-400 text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Reset Password Form */}
-              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onResetPassword(); }}>
+              <form className="space-y-4" onSubmit={handleResetPassword}>
                 <div>
                   <Label htmlFor="newPassword" className="text-gray-300 mb-2 block">
                     New Password
@@ -111,6 +209,11 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 pr-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                      minLength={8}
                     />
                     <button
                       type="button"
@@ -137,6 +240,11 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
                       type={showConfirmPassword ? "text" : "password"}
                       placeholder="••••••••"
                       className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-12 pr-12 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                      minLength={8}
                     />
                     <button
                       type="button"
@@ -152,12 +260,20 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
                   </div>
                 </div>
 
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <motion.div whileHover={{ scale: isLoading ? 1 : 1.02 }} whileTap={{ scale: isLoading ? 1 : 0.98 }}>
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl"
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Update Password
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin inline" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
                   </Button>
                 </motion.div>
               </form>
@@ -167,8 +283,37 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
               <h1 className="text-white text-center text-3xl mb-2">Verify Your Account</h1>
               <p className="text-gray-400 text-center mb-8">Enter the 6-digit code sent to your email</p>
 
+              {/* Email Input (if not provided) */}
+              {!email && (
+                <div>
+                  <Label htmlFor="resetEmail" className="text-gray-300 mb-2 block">
+                    Email
+                  </Label>
+                  <Input
+                    id="resetEmail"
+                    type="email"
+                    placeholder="your@email.com"
+                    className="w-full bg-[#1a1a1a] border-[#2a2a2a] rounded-xl pl-4 h-12 text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <p className="text-red-400 text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Verification Code Form */}
-              <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onResetPassword(); }}>
+              <form className="space-y-6" onSubmit={handleVerifyCode}>
                 <div>
                   <Label className="text-gray-300 mb-4 block text-center">
                     Verification Code
@@ -184,24 +329,39 @@ export function ResetPasswordPage({ onResetPassword, mode = 'reset' }: ResetPass
                         onChange={(e) => handleCodeChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
                         className="w-12 h-12 text-center bg-[#1a1a1a] border-[#2a2a2a] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-[#00ff88]"
+                        disabled={isLoading}
                       />
                     ))}
                   </div>
                 </div>
 
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <motion.div whileHover={{ scale: isLoading ? 1 : 1.02 }} whileTap={{ scale: isLoading ? 1 : 0.98 }}>
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl"
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] hover:from-[#00ff88]/80 hover:to-[#00cc6e]/80 text-black py-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Verify
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin inline" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify'
+                    )}
                   </Button>
                 </motion.div>
 
                 {/* Resend Code */}
                 <p className="text-center text-gray-400 text-sm">
                   Didn't receive the code?{' '}
-                  <button onClick={(e) => { e.preventDefault(); }} className="text-[#00ff88] hover:underline">
+                  <button 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      // TODO: Implement resend functionality
+                    }} 
+                    className="text-[#00ff88] hover:underline"
+                  >
                     Resend Code
                   </button>
                 </p>

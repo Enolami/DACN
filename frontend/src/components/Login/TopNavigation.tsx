@@ -3,8 +3,10 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NotificationsPanel } from './NotificationsPanel';
+import { getProfile, getAccessToken } from '../../services/api';
+import { generateDefaultAvatar, getInitials } from '../../utils/avatarUtils';
 
 interface TopNavigationProps {
   onNavigate: (page: string, data?: any) => void;
@@ -17,7 +19,45 @@ interface TopNavigationProps {
 
 export function TopNavigation({ onNavigate, currentPage, onBack, onForward, canGoBack = false, canGoForward = false }: TopNavigationProps) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>('U');
   const unreadCount = 3;
+
+  // Fetch user profile for avatar
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const token = getAccessToken();
+      if (!token) return;
+
+      try {
+        const profile = await getProfile();
+        if (profile.avatar_url && profile.avatar_url.trim() !== '') {
+          setAvatarUrl(profile.avatar_url);
+        } else {
+          // Use default avatar with first letter of username
+          const defaultAvatar = generateDefaultAvatar(profile.username || 'User');
+          setAvatarUrl(defaultAvatar);
+        }
+        setUsername(profile.username || 'U');
+      } catch (error) {
+        console.error('Failed to fetch profile for navigation:', error);
+        // Keep default avatar on error
+      }
+    };
+
+    fetchUserProfile();
+
+    // Listen for custom event when profile is updated
+    const handleProfileUpdate = () => {
+      fetchUserProfile();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
 
   return (
     <>
@@ -96,8 +136,8 @@ export function TopNavigation({ onNavigate, currentPage, onBack, onForward, canG
             <Avatar className={`w-9 h-9 border-2 ${
               currentPage === 'profile' ? 'border-[#00ff88]' : 'border-[#2a2a2a] hover:border-[#00ff88]'
             } transition-colors`}>
-              <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" alt="User" />
-              <AvatarFallback className="bg-[#1a1a1a] text-white">U</AvatarFallback>
+              <AvatarImage src={avatarUrl || generateDefaultAvatar(username || 'User')} alt="User" />
+              <AvatarFallback className="bg-[#1a1a1a] text-white">{getInitials(username || 'User')}</AvatarFallback>
             </Avatar>
           </motion.div>
         </div>

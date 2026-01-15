@@ -1,4 +1,4 @@
-import { Mail, Lock, Sparkles, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Sparkles, User, Eye, EyeOff, Loader2, AtSign } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { registerUser } from '../../services/api'; // Import the API service
 
 interface SignUpPageProps {
-  onSignUp: () => void;
+  onSignUp: (email: string) => void;
   onNavigateToLogin: () => void;
 }
 
@@ -55,11 +55,11 @@ export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
     setIsLoading(true);
 
     try {
-      // Call the API
+      // Call the API (no username - will be set after email verification)
       await registerUser(formData.email, formData.password, formData.fullname);
       
-      // If successful, navigate (App.tsx handles the redirection to Subscription)
-      onSignUp();
+      // If successful, pass email to parent to show OTP verification
+      onSignUp(formData.email);
     } catch (err: any) {
       console.error("Signup failed:", err);
       // Display the error message from the backend (e.g., "Email already exists")

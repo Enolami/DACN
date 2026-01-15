@@ -1,4 +1,4 @@
-import { X, Upload, Image as ImageIcon, Camera } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Camera, Loader2, UserX } from 'lucide-react';
 import { Button } from '../Login/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef, useState } from 'react';
@@ -7,13 +7,16 @@ import { ImageWithFallback } from '../Login/img/ImageWithFallback';
 interface ImagePickerDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageSelect: (imageUrl: string) => void;
+  onImageSelect: (imageUrl: string) => Promise<void>;
+  onRemoveAvatar?: () => Promise<void>;
   currentImageUrl?: string;
+  isUploading?: boolean;
 }
 
-export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImageUrl }: ImagePickerDialogProps) {
+export function ImagePickerDialog({ isOpen, onClose, onImageSelect, onRemoveAvatar, currentImageUrl, isUploading = false }: ImagePickerDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -40,13 +43,17 @@ export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImage
     }
   };
 
-  const handleUpload = () => {
-    if (previewUrl) {
-      // In a real app, you would upload the file to a server here
-      // For now, we'll use the preview URL as the selected image
-      onImageSelect(previewUrl);
-      setPreviewUrl(null);
-      onClose();
+  const handleUpload = async () => {
+    if (previewUrl && !isUploading) {
+      try {
+        await onImageSelect(previewUrl);
+        // Only close and reset after successful upload
+        setPreviewUrl(null);
+        onClose();
+      } catch (error) {
+        // Error is handled by parent component, keep dialog open
+        console.error('Upload failed:', error);
+      }
     }
   };
 
@@ -54,6 +61,22 @@ export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImage
     setPreviewUrl(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (onRemoveAvatar && !isRemoving && !isUploading) {
+      try {
+        setIsRemoving(true);
+        await onRemoveAvatar();
+        // Close dialog after successful removal
+        onClose();
+      } catch (error) {
+        console.error('Failed to remove avatar:', error);
+        // Keep dialog open on error
+      } finally {
+        setIsRemoving(false);
+      }
     }
   };
 
@@ -70,8 +93,8 @@ export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImage
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            onClick={isUploading ? undefined : onClose}
+            className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 ${isUploading ? 'cursor-wait' : ''}`}
           />
 
           {/* Dialog */}
@@ -92,7 +115,8 @@ export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImage
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={onClose}
-                    className="w-8 h-8 rounded-full bg-[#1a1a1a] hover:bg-[#252525] flex items-center justify-center transition-colors"
+                    disabled={isUploading}
+                    className="w-8 h-8 rounded-full bg-[#1a1a1a] hover:bg-[#252525] flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <X className="w-4 h-4 text-gray-400" />
                   </motion.button>
@@ -105,11 +129,21 @@ export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImage
                 <div className="flex justify-center">
                   <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-[#00ff88] shadow-2xl ring-4 ring-[#00ff88]/20">
                     {previewUrl ? (
-                      <ImageWithFallback
-                        src={previewUrl}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <ImageWithFallback
+                          src={previewUrl}
+                          alt="Preview"
+                          className={`w-full h-full object-cover ${isUploading ? 'opacity-50' : ''}`}
+                        />
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
+                              <span className="text-white text-sm font-medium">Uploading...</span>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : currentImageUrl ? (
                       <ImageWithFallback
                         src={currentImageUrl}
@@ -137,36 +171,71 @@ export function ImagePickerDialog({ isOpen, onClose, onImageSelect, currentImage
                 <div className="space-y-3">
                   <Button
                     onClick={handleChooseFile}
-                    className="w-full bg-[#00ff88] hover:bg-[#00ff88]/80 text-black gap-2"
+                    disabled={isUploading || isRemoving}
+                    className="w-full bg-[#00ff88] hover:bg-[#00ff88]/80 text-black gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Upload className="w-5 h-5" />
-                    Choose Photo
+                    Choose New Photo
                   </Button>
 
                   {previewUrl && (
                     <>
                       <Button
                         onClick={handleUpload}
-                        className="w-full bg-[#a855f7] hover:bg-[#a855f7]/80 text-white gap-2"
+                        disabled={isUploading}
+                        className="w-full bg-[#a855f7] hover:bg-[#a855f7]/80 text-white gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Camera className="w-5 h-5" />
-                        Upload Photo
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-5 h-5" />
+                            Choose This Photo
+                          </>
+                        )}
                       </Button>
                       <Button
                         onClick={handleRemove}
+                        disabled={isUploading}
                         variant="outline"
-                        className="w-full border-[#1a1a1a] hover:bg-[#1a1a1a] text-gray-400 hover:text-white"
+                        className="w-full border-[#1a1a1a] hover:bg-[#1a1a1a] text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Remove
+                        Go Back
                       </Button>
                     </>
                   )}
                 </div>
 
+                {/* Remove Avatar Button */}
+                {currentImageUrl && !previewUrl && (
+                  <Button
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploading || isRemoving}
+                    variant="outline"
+                    className="w-full border-red-500/50 hover:bg-red-500/10 hover:border-red-500 text-red-400 hover:text-red-300 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isRemoving ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Removing...
+                      </>
+                    ) : (
+                      <>
+                        <UserX className="w-5 h-5" />
+                        Remove Avatar
+                      </>
+                    )}
+                  </Button>
+                )}
+
                 {/* Info Text */}
                 <p className="text-center text-gray-400 text-sm">
                   Supported formats: JPG, PNG, GIF (Max 5MB)
                 </p>
+
               </div>
             </div>
           </motion.div>

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getAccessToken, clearTokens, storeTokens, validateToken } from './services/api';
 import { LoginPage } from './components/Login/LoginPage';
 import { SignUpPage } from './components/Login/SignUpPage';
+import { OTPVerificationPage } from './components/Login/OTPVerificationPage';
+import { UsernameSetupPage } from './components/Login/UsernameSetupPage';
 import { ForgotPasswordPage } from './components/Login/ForgotPasswordPage';
 import { ResetPasswordPage } from './components/Login/ResetPasswordPage';
-import { SubscriptionPage } from './components/Login/SubscriptionPage';
 import { HomePage } from './components/Login/HomePage';
 import { LeftSidebar } from './components/Login/LeftSidebar';
 import { RightPanel } from './components/Login/RightPanel';
@@ -16,7 +18,7 @@ import { SongDetail } from './components/Login/SongDetail';
 import { MusicPlayer } from './components/Login/MusicPlayer';
 import { NowPlayingFullscreen } from './components/Login/NowPlayingFullscreen';
 
-type View = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify' | 'subscription' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song';
+type View = 'login' | 'signup' | 'verify-otp' | 'forgot-password' | 'reset-password' | 'verify' | 'set-username' | 'home' | 'artist-profile' | 'profile' | 'playlist' | 'song';
 
 interface NavigationState {
   view: View;
@@ -27,7 +29,10 @@ interface NavigationState {
 function App() {
   const [currentView, setCurrentView] = useState<View>('login');
   const [resetMode, setResetMode] = useState<'reset' | 'verify'>('verify');
+  const [resetEmail, setResetEmail] = useState<string>('');
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('home');
+  const [signupEmail, setSignupEmail] = useState<string>('');
   const [selectedArtist, setSelectedArtist] = useState<any>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
   const [selectedSong, setSelectedSong] = useState<any>(null);
@@ -47,29 +52,91 @@ function App() {
     imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100'
   });
 
-  const handleLogin = (token?: string) => {
-  console.log('Login successful with token:', token);
-  
-  // Store the token (e.g., in localStorage)
-  if (token) {
-    localStorage.setItem('authToken', token);
-  }
-  
-  // Navigate to subscription or home
-  setCurrentView('subscription');
+  // Auto-login on app load if a token already exists (remember me or session)
+  useEffect(() => {
+    const checkAuth = async () => {
+      const storedToken = getAccessToken();
+      if (storedToken) {
+        // Validate token before auto-login
+        const isValid = await validateToken();
+        if (isValid) {
+          setCurrentPage('home');
+          setCurrentView('home');
+        } else {
+          // Token is invalid, clear it and stay on login
+          clearTokens();
+          setCurrentView('login');
+        }
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogin = (token: string, remember?: boolean, view?: string, data?: any) => {
+    // If view is specified (e.g., 'set-username'), navigate to that view
+    if (view === 'set-username' && data?.email) {
+      setCurrentView('set-username');
+      setSignupEmail(data.email); // Reuse signupEmail state for username setup email
+      return;
+    }
+    
+    // Check if the token response indicates username is needed
+    // This handles OAuth flows that return needs_username flag
+    if (data?.needs_username && data?.email) {
+      setCurrentView('set-username');
+      setSignupEmail(data.email);
+      return;
+    }
+    
+    // Tokens are now stored via helpers in api.ts; here we just move the user into the main app
+    setCurrentPage('home');
+    setCurrentView('home');
   };
 
-  const handleSignUp = () => {
-    console.log('Sign up clicked');
-    // TODO: Implement sign up logic (API call, validation, etc.)
-    // After successful sign up, navigate to subscription page
-    setCurrentView('subscription');
+  const handleLogout = () => {
+    clearTokens();
+
+    // Reset high-level app state
+    setCurrentView('login');
+    setCurrentPage('home');
+    setSelectedArtist(null);
+    setSelectedPlaylist(null);
+    setSelectedSong(null);
+    setShowNowPlaying(false);
+    setIsPlaying(false);
+    setHistory([]);
+    setHistoryIndex(-1);
   };
 
-  const handleSelectPlan = (plan: 'free' | 'premium') => {
-    console.log(`Selected plan: ${plan}`);
-    // TODO: Implement plan selection logic (API call, save to database, etc.)
-    // After selecting plan, navigate to home page
+  const handleSignUp = (email: string) => {
+    console.log('Sign up successful, showing OTP verification for:', email);
+    setSignupEmail(email);
+    setCurrentView('verify-otp');
+  };
+
+  const handleOTPVerified = (data: any) => {
+    // Check if username is needed
+    if (data.needs_username) {
+      // Store temp token and navigate to username setup
+      storeTokens(data.temp_token, '', true);
+      setSignupEmail(data.email);
+      setCurrentView('set-username');
+      return;
+    }
+    
+    // Store tokens - remember me by default after signup
+    storeTokens(data.access, data.refresh, true);
+    
+    // Navigate to home
+    setCurrentPage('home');
+    setCurrentView('home');
+  };
+
+  const handleUsernameSetupComplete = (access: string, refresh: string) => {
+    // Store tokens - remember me by default after OAuth
+    storeTokens(access, refresh, true);
+    
+    // Navigate to home
     setCurrentPage('home');
     setCurrentView('home');
   };
@@ -96,7 +163,7 @@ function App() {
     
     // Save current state to history before navigating
     if (currentView !== 'login' && currentView !== 'signup' && currentView !== 'forgot-password' && 
-        currentView !== 'reset-password' && currentView !== 'verify' && currentView !== 'subscription') {
+        currentView !== 'reset-password' && currentView !== 'verify') {
       addToHistory(currentView, currentPage, {
         selectedArtist,
         selectedPlaylist,
@@ -225,7 +292,7 @@ function App() {
   const handleSidebarNavigate = (page: string) => {
     // Save current state to history before navigating
     if (currentView !== 'login' && currentView !== 'signup' && currentView !== 'forgot-password' && 
-        currentView !== 'reset-password' && currentView !== 'verify' && currentView !== 'subscription') {
+        currentView !== 'reset-password' && currentView !== 'verify') {
       addToHistory(currentView, currentPage, {
         selectedArtist,
         selectedPlaylist,
@@ -267,24 +334,36 @@ function App() {
     setCurrentView('forgot-password');
   };
 
-  const handleSendResetLink = () => {
-    console.log('Reset link sent');
+  const handleSendResetLink = (email: string) => {
+    setResetEmail(email);
     // After sending reset link, show verification code page
     setResetMode('verify');
     setCurrentView('verify');
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = (access?: string, refresh?: string) => {
     if (resetMode === 'verify') {
-      console.log('Verification code submitted');
-      // After verification successful, show reset password form
+      // After verification successful, store the reset token and show reset password form
+      if (access) {
+        setResetToken(access); // Store the reset token
+      }
       setResetMode('reset');
       setCurrentView('reset-password');
     } else {
-      console.log('Password reset completed');
-      // After password reset successful, go back to login
-      setCurrentView('login');
+      // After password reset successful, user is logged in
+      if (access && refresh) {
+        // Store tokens and navigate to home
+        const { storeTokens } = require('./services/api');
+        storeTokens(access, refresh, true);
+        setCurrentView('home');
+        setCurrentPage('library');
+      } else {
+        // Fallback: go back to login
+        setCurrentView('login');
+      }
       setResetMode('verify'); // Reset mode for next time
+      setResetEmail(''); // Clear email
+      setResetToken(null); // Clear reset token
     }
   };
 
@@ -305,6 +384,22 @@ function App() {
             onNavigateToLogin={handleNavigateToLogin}
           />
         );
+      case 'verify-otp':
+        return (
+          <OTPVerificationPage
+            email={signupEmail}
+            onVerified={handleOTPVerified}
+            onBack={() => setCurrentView('signup')}
+          />
+        );
+      case 'set-username':
+        return (
+          <UsernameSetupPage
+            email={signupEmail}
+            onComplete={handleUsernameSetupComplete}
+            onBack={() => setCurrentView('login')}
+          />
+        );
       case 'forgot-password':
         return (
           <ForgotPasswordPage 
@@ -317,6 +412,8 @@ function App() {
           <ResetPasswordPage 
             onResetPassword={handleResetPassword}
             mode="verify"
+            email={resetEmail}
+            resetToken={null}
           />
         );
       case 'reset-password':
@@ -324,12 +421,8 @@ function App() {
           <ResetPasswordPage 
             onResetPassword={handleResetPassword}
             mode="reset"
-          />
-        );
-      case 'subscription':
-        return (
-          <SubscriptionPage 
-            onSelectPlan={handleSelectPlan}
+            email={resetEmail}
+            resetToken={resetToken}
           />
         );
       case 'home':
@@ -406,7 +499,13 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel 
+                onNavigate={handleNavigate}
+                onSongSelect={(song) => {
+                  setCurrentSong(song);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -436,9 +535,16 @@ function App() {
                 />
                 <ProfilePage 
                   onNavigate={handleNavigate}
+                  onLogout={handleLogout}
                 />
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel 
+                onNavigate={handleNavigate}
+                onSongSelect={(song) => {
+                  setCurrentSong(song);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -473,7 +579,13 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel 
+                onNavigate={handleNavigate}
+                onSongSelect={(song) => {
+                  setCurrentSong(song);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -508,7 +620,13 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              <RightPanel 
+                onNavigate={handleNavigate}
+                onSongSelect={(song) => {
+                  setCurrentSong(song);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
