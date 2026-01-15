@@ -1,7 +1,7 @@
 import { PlaylistCard } from './PlaylistCard';
 import { ArtistCard } from './ArtistCard';
 import { ImageWithFallback } from './img/ImageWithFallback';
-import { Sparkles, TrendingUp, Radio, Play } from 'lucide-react';
+import { Sparkles, TrendingUp, Play } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
@@ -64,24 +64,6 @@ export function HomePage({ onNavigate }: HomePageProps) {
     { name: 'Echo Dreams', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=echo', genre: 'Ambient' },
     { name: 'Bass Drop', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bass', genre: 'Dubstep' },
     { name: 'Crystal Sound', imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=crystal', genre: 'Chill' },
-  ];
-
-  const popularRadios = [
-    {
-      title: 'Electronic Radio',
-      listeners: '2.4M',
-      imageUrl: 'https://images.unsplash.com/photo-1627667049482-dd134b1f6366?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyYWRpbyUyMHN0YXRpb258ZW58MXx8fHwxNzYxMzkzMzU3fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      title: 'Chill Beats Radio',
-      listeners: '1.8M',
-      imageUrl: 'https://images.unsplash.com/photo-1573283807132-f7b218208690?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtdXNpYyUyMGVxdWFsaXplcnxlbnwxfHx8fDE3NjEzOTMzNTd8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      title: 'Pop Hits Radio',
-      listeners: '3.2M',
-      imageUrl: 'https://images.unsplash.com/photo-1596807323443-a1528e2cd0ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRpc3QlMjBwZXJmb3JtZXJ8ZW58MXx8fHwxNzYxMzkzMzU1fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
   ];
 
   return (
@@ -147,44 +129,6 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   <div key={index} onClick={() => onNavigate('artist', artist)}>
                     <ArtistCard {...artist} />
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Popular Radios */}
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-5">
-                <Radio className="w-5 h-5 text-[#00ff88]" />
-                <h2 className="text-white text-xl font-semibold">Popular Radios</h2>
-              </div>
-              <div className="grid grid-cols-3 gap-6">
-                {popularRadios.map((radio, index) => (
-                  <motion.div
-                    key={index}
-                    whileHover={{ scale: 1.02 }}
-                    className="group bg-[#1a1a1a] p-6 rounded-xl cursor-pointer transition-all hover:bg-[#252525] relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 opacity-20">
-                      <ImageWithFallback
-                        src={radio.imageUrl}
-                        alt={radio.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-4">
-                        <Radio className="w-8 h-8 text-[#00ff88]" />
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          className="bg-[#00ff88] w-12 h-12 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Play className="w-5 h-5 text-black fill-black ml-1" />
-                        </motion.button>
-                      </div>
-                      <h3 className="text-white text-xl mb-2">{radio.title}</h3>
-                      <p className="text-gray-400 text-sm">{radio.listeners} listeners</p>
-                    </div>
-                  </motion.div>
                 ))}
               </div>
             </div>

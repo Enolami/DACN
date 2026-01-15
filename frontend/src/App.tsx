@@ -36,6 +36,7 @@ function App() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
   const [selectedSong, setSelectedSong] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   
   // Navigation history
   const [history, setHistory] = useState<NavigationState[]>([]);
@@ -456,10 +457,12 @@ function App() {
                 />
                 {renderContent()}
               </div>
-              <RightPanel onNavigate={handleNavigate} />
+              {showRightPanel && <RightPanel onNavigate={handleNavigate} />}
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
+              onToggleRightPanel={() => setShowRightPanel(!showRightPanel)}
+              showRightPanel={showRightPanel}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -490,16 +493,20 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel 
-                onNavigate={handleNavigate}
-                onSongSelect={(song) => {
-                  setCurrentSong(song);
-                  setIsPlaying(true);
-                }}
-              />
+              {showRightPanel && (
+                <RightPanel 
+                  onNavigate={handleNavigate}
+                  onSongSelect={(song) => {
+                    setCurrentSong(song);
+                    setIsPlaying(true);
+                  }}
+                />
+              )}
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
+              onToggleRightPanel={() => setShowRightPanel(!showRightPanel)}
+              showRightPanel={showRightPanel}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -528,16 +535,20 @@ function App() {
                   onLogout={handleLogout}
                 />
               </div>
-              <RightPanel 
-                onNavigate={handleNavigate}
-                onSongSelect={(song) => {
-                  setCurrentSong(song);
-                  setIsPlaying(true);
-                }}
-              />
+              {showRightPanel && (
+                <RightPanel 
+                  onNavigate={handleNavigate}
+                  onSongSelect={(song) => {
+                    setCurrentSong(song);
+                    setIsPlaying(true);
+                  }}
+                />
+              )}
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
+              onToggleRightPanel={() => setShowRightPanel(!showRightPanel)}
+              showRightPanel={showRightPanel}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -568,16 +579,20 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel 
-                onNavigate={handleNavigate}
-                onSongSelect={(song) => {
-                  setCurrentSong(song);
-                  setIsPlaying(true);
-                }}
-              />
+              {showRightPanel && (
+                <RightPanel 
+                  onNavigate={handleNavigate}
+                  onSongSelect={(song) => {
+                    setCurrentSong(song);
+                    setIsPlaying(true);
+                  }}
+                />
+              )}
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
+              onToggleRightPanel={() => setShowRightPanel(!showRightPanel)}
+              showRightPanel={showRightPanel}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
@@ -608,16 +623,20 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel 
-                onNavigate={handleNavigate}
-                onSongSelect={(song) => {
-                  setCurrentSong(song);
-                  setIsPlaying(true);
-                }}
-              />
+              {showRightPanel && (
+                <RightPanel 
+                  onNavigate={handleNavigate}
+                  onSongSelect={(song) => {
+                    setCurrentSong(song);
+                    setIsPlaying(true);
+                  }}
+                />
+              )}
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
+              onToggleRightPanel={() => setShowRightPanel(!showRightPanel)}
+              showRightPanel={showRightPanel}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}

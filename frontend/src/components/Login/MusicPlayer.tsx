@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, Volume1, VolumeX, ListMusic } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
 import { WaveformAnimation } from './WaveformAnimation';
@@ -7,6 +7,8 @@ import React, { useState, useEffect } from 'react';
 
 interface MusicPlayerProps {
   onNavigate?: (page: string, data?: any) => void;
+  onToggleRightPanel?: () => void;
+  showRightPanel?: boolean;
   currentSong?: {
     title: string;
     artist: string;
@@ -18,7 +20,7 @@ interface MusicPlayerProps {
   onPlayPause?: (playing: boolean) => void;
 }
 
-export function MusicPlayer({ onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause }: MusicPlayerProps) {
+export function MusicPlayer({ onNavigate, onToggleRightPanel, showRightPanel = true, currentSong, isPlaying: externalIsPlaying = false, onPlayPause }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(externalIsPlaying);
   
   // Sync with external state
@@ -154,14 +156,21 @@ export function MusicPlayer({ onNavigate, currentSong, isPlaying: externalIsPlay
           <Button
             size="icon"
             variant="ghost"
-            className="w-9 h-9 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+            onClick={onToggleRightPanel}
+            className={`w-9 h-9 hover:text-white hover:bg-[#1a1a1a] ${showRightPanel ? 'text-[#00ff88]' : 'text-gray-400'}`}
           >
             <ListMusic className="w-4 h-4" />
           </Button>
         </motion.div>
 
         <div className="flex items-center gap-2 min-w-[120px]">
-          <Volume2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          {volume[0] === 0 ? (
+            <VolumeX className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          ) : volume[0] < 50 ? (
+            <Volume1 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          ) : (
+            <Volume2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          )}
           <Slider
             value={volume}
             onValueChange={setVolume}
