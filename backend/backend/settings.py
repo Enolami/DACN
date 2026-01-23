@@ -107,6 +107,12 @@ if SUPABASE_DB_URL:
     match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', SUPABASE_DB_URL)
     if match:
         db_user, db_password, db_host, db_port, db_name = match.groups()
+        # Use direct connection instead of pooler (replace pooler with direct)
+        # Pooler format: db.xxx.pooler.supabase.com
+        # Direct format: db.xxx.supabase.co
+        if 'pooler' in db_host:
+            db_host = db_host.replace('.pooler', '')
+        
         DATABASES = {
             "default": {
                 'ENGINE': 'django.db.backends.postgresql',
@@ -115,6 +121,11 @@ if SUPABASE_DB_URL:
                 'PASSWORD': db_password,
                 'HOST': db_host,
                 'PORT': db_port,
+                'OPTIONS': {
+                    'connect_timeout': 10,  # 10 second connection timeout
+                    'sslmode': 'require',  # Supabase requires SSL
+                },
+                'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
             }
         }
     else:
