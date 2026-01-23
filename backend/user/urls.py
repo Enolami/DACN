@@ -15,6 +15,8 @@ from .views import (
     ResetPasswordAPIView,
     ProfileView,
     ProfileAvatarView,
+    ChangePasswordView,
+    VerifyPasswordOTPView,
 )
 
 urlpatterns = [
@@ -30,6 +32,8 @@ urlpatterns = [
     path('api/forgot-password/', ForgotPasswordAPIView.as_view(), name='api_forgot_password'),
     path('api/verify-reset-otp/', VerifyResetOTPAPIView.as_view(), name='api_verify_reset_otp'),
     path('api/reset-password/', ResetPasswordAPIView.as_view(), name='api_reset_password'),
+    path('api/change-password/', ChangePasswordView.as_view(), name='api_change_password'),
+    path('api/verify-password-otp/', VerifyPasswordOTPView.as_view(), name='api_verify_password_otp'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Profile endpoints
     path('api/profile/', ProfileView.as_view(), name='api_profile'),

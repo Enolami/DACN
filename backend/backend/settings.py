@@ -208,4 +208,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
 ]
 
+# Expose headers needed for range requests
+CORS_EXPOSE_HEADERS = ['Content-Range', 'Accept-Ranges', 'Content-Length']
+
 # CORS_ALLOW_ALL_ORIGINS = True

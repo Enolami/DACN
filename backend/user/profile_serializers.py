@@ -22,6 +22,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'username',
             'avatar_url',
             'bio',
+            'is_private',
             'join_date',
             'created_at',
             'updated_at',
@@ -36,10 +37,11 @@ class ProfileUpdateSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150, required=False)  # Maps to profile.name
     name = serializers.CharField(max_length=150, required=False)
     bio = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    is_private = serializers.BooleanField(required=False)
 
     def update(self, instance, validated_data):
         """
-        Update Profile.name and Profile.bio.
+        Update Profile.name, Profile.bio, and Profile.is_private.
         Returns the Profile instance.
         """
         # Update profile name (accept both 'name' and 'first_name' for compatibility)
@@ -52,12 +54,18 @@ class ProfileUpdateSerializer(serializers.Serializer):
         if 'bio' in validated_data:
             instance.bio = validated_data['bio']
         
+        # Update privacy setting if provided
+        if 'is_private' in validated_data:
+            instance.is_private = validated_data['is_private']
+        
         # Save changes
         update_fields = []
         if 'name' in validated_data or 'first_name' in validated_data:
             update_fields.append('name')
         if 'bio' in validated_data:
             update_fields.append('bio')
+        if 'is_private' in validated_data:
+            update_fields.append('is_private')
         update_fields.append('updated_at')
         
         instance.save(update_fields=update_fields)

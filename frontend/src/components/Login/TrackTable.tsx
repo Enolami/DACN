@@ -1,6 +1,8 @@
 import { Heart, Play, MoreHorizontal, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { likeSong, unlikeSong, getLikedSongs } from '../../services/api';
 
 interface Track {
   number: number;
@@ -9,22 +11,69 @@ interface Track {
   album: string;
   duration: string;
   liked?: boolean;
+  songId?: string; // Song ID for like functionality
+  song?: any; // Full song object for navigation
 }
 
 interface TrackTableProps {
   tracks: Track[];
   onNavigate?: (page: string, data?: any) => void;
+  onRemoveFromPlaylist?: (songId: string) => void;
+  showRemoveButton?: boolean;
 }
 
-export function TrackTable({ tracks, onNavigate }: TrackTableProps) {
+export function TrackTable({ tracks, onNavigate, onRemoveFromPlaylist, showRemoveButton = false }: TrackTableProps) {
+  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+
+  // Fetch liked songs on mount
+  useEffect(() => {
+    const fetchLikedSongs = async () => {
+      try {
+        const liked = await getLikedSongs();
+        setLikedSongs(new Set(liked.map(ls => ls.song_id)));
+      } catch (err) {
+        console.error('Error fetching liked songs:', err);
+      }
+    };
+    fetchLikedSongs();
+  }, []);
+
   const handleTrackClick = (track: Track) => {
     if (onNavigate) {
-      onNavigate('song', {
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: track.duration,
-      });
+      // If we have the full song object, use it; otherwise fall back to partial data
+      if (track.song) {
+        onNavigate('song', { song: track.song });
+      } else {
+        onNavigate('song', {
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          duration: track.duration,
+          id: track.songId,
+        });
+      }
+    }
+  };
+
+  const handleLikeToggle = async (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    if (!track.songId) return;
+
+    const isLiked = likedSongs.has(track.songId);
+    try {
+      if (isLiked) {
+        await unlikeSong(track.songId);
+        setLikedSongs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(track.songId!);
+          return newSet;
+        });
+      } else {
+        await likeSong(track.songId);
+        setLikedSongs(prev => new Set(prev).add(track.songId!));
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
     }
   };
 
@@ -98,12 +147,18 @@ export function TrackTable({ tracks, onNavigate }: TrackTableProps) {
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => handleLikeToggle(e, track)}
                 className={`w-8 h-8 ${
-                  track.liked ? 'text-[#00ff88]' : 'text-gray-400 hover:text-white'
+                  (track.liked || (track.songId && likedSongs.has(track.songId))) 
+                    ? 'text-[#ec4899]' 
+                    : 'text-gray-400 hover:text-[#ec4899]'
                 }`}
               >
-                <Heart className={`w-4 h-4 ${track.liked ? 'fill-[#00ff88]' : ''}`} />
+                <Heart className={`w-4 h-4 ${
+                  (track.liked || (track.songId && likedSongs.has(track.songId))) 
+                    ? 'fill-[#ec4899]' 
+                    : ''
+                }`} />
               </Button>
               <Button 
                 size="icon" 

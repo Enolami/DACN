@@ -88,6 +88,7 @@ class Profile(models.Model):
     avatar_url = models.URLField(max_length=500, blank=True)
     avatar_id = models.CharField(max_length=255, blank=True)
     bio = models.TextField(blank=True)
+    is_private = models.BooleanField(default=False, help_text="If True, only the user can see their activity")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

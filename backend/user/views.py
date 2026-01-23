@@ -833,6 +833,173 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return Response(response_serializer.data)
 
 
+class ChangePasswordView(views.APIView):
+    """
+    Change user password.
+    Requires old_password if user has a password set.
+    If user logged in via OAuth and hasn't linked with manual account, sends OTP.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        old_password = request.data.get('old_password', '').strip()
+        new_password = request.data.get('new_password', '').strip()
+        confirm_password = request.data.get('confirm_password', '').strip()
+        
+        user = request.user
+        
+        # Check if user has OAuth and no password set (pure OAuth account)
+        # Pure OAuth accounts have username == email (they never set a custom username)
+        is_pure_oauth = user.oauth_provider and user.username == user.email
+        
+        # Check if user has a password set
+        # Django's check_password will return False for unusable passwords
+        has_password = user.has_usable_password()
+        
+        if not new_password or not confirm_password:
+            return Response(
+                {'error': 'New password and confirm password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'Password must be at least 8 characters long'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_password != confirm_password:
+            return Response(
+                {'error': 'Passwords do not match'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # If user has a password, require old_password
+        if has_password:
+            if not old_password:
+                return Response(
+                    {'error': 'Old password is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Verify old password
+            if not user.check_password(old_password):
+                return Response(
+                    {'error': 'Invalid old password'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # If pure OAuth account (no password), send OTP instead
+        elif is_pure_oauth:
+            # Send OTP for password setup
+            from .models import PasswordResetOTP
+            otp = PasswordResetOTP.create_for_user(user)
+            
+            # Send email with OTP
+            from django.core.mail import send_mail
+            from django.conf import settings
+            send_mail(
+                subject="Password Setup Code",
+                message=f"Your password setup code is: {otp.code}\n\nIt will expire in 10 minutes.\n\nIf you didn't request to set a password, please ignore this email.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            
+            return Response(
+                {
+                    'message': 'OTP code has been sent to your email. Please verify the code to set your password.',
+                    'requires_otp': True,
+                    'email': user.email
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        # Update password
+        user.set_password(new_password)
+        user.save(update_fields=['password', 'updated_at'])
+        
+        # Generate new JWT tokens
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        
+        return Response(
+            {
+                'message': 'Password changed successfully',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class VerifyPasswordOTPView(views.APIView):
+    """
+    Verify OTP for password change (for OAuth users setting password for the first time).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        code = request.data.get('code', '').strip()
+        new_password = request.data.get('new_password', '').strip()
+        confirm_password = request.data.get('confirm_password', '').strip()
+        
+        if not code or not new_password or not confirm_password:
+            return Response(
+                {'error': 'Code, new password, and confirm password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'Password must be at least 8 characters long'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_password != confirm_password:
+            return Response(
+                {'error': 'Passwords do not match'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = request.user
+        
+        # Find the latest unused OTP for this user
+        from .models import PasswordResetOTP
+        otp = (
+            PasswordResetOTP.objects.filter(user=user, is_used=False)
+            .order_by("-created_at")
+            .first()
+        )
+        
+        if not otp or not otp.is_valid(code):
+            return Response(
+                {'error': 'Invalid or expired verification code.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Mark OTP as used
+        otp.is_used = True
+        otp.save(update_fields=['is_used'])
+        
+        # Update password
+        user.set_password(new_password)
+        user.save(update_fields=['password', 'updated_at'])
+        
+        # Generate new JWT tokens
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        
+        return Response(
+            {
+                'message': 'Password set successfully',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 class ProfileAvatarView(views.APIView):
     """
     POST: Upload avatar image to Cloudinary.

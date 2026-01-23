@@ -1,10 +1,10 @@
-import { Plus, Heart, ListMusic, ArrowUpDown, Filter, Search, MoreVertical, Play, Clock } from 'lucide-react';
+import { Plus, Heart, ListMusic, ArrowUpDown, Filter, Search, MoreVertical, Play, Clock, Loader2, Music } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { ImageWithFallback } from './img/ImageWithFallback';
 import { Input } from './ui/input';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
+import { getSongs, formatDuration, getLikedSongs, getFollowedArtists, getPlaylists, createPlaylist } from '../../services/api';
+import { TrackTable } from './TrackTable';
+import { CreatePlaylistDialog } from './CreatePlaylistDialog';
+import type { Song, Artist, Album, LikedSong, Follower, Playlist } from '../../types/music';
 
 interface LibraryPageProps {
   onNavigate: (page: string, data?: any) => void;
@@ -19,246 +23,141 @@ interface LibraryPageProps {
 }
 
 export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageProps) {
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
+  const [followedArtists, setFollowedArtists] = useState<Follower[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [songsSearchQuery, setSongsSearchQuery] = useState('');
   const [songsSortBy, setSongsSortBy] = useState('Recently Added');
   const [songsFilter, setSongsFilter] = useState('All');
   const [generalSortBy, setGeneralSortBy] = useState('Recently Added');
   const [generalFilter, setGeneralFilter] = useState('All');
+  const [isCreatePlaylistDialogOpen, setIsCreatePlaylistDialogOpen] = useState(false);
 
-  const playlists = [
-    {
-      title: 'My Favorite Mix',
-      songs: 45,
-      imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=300',
-      isPrivate: false,
-      downloaded: true,
-    },
-    {
-      title: 'Workout Energy',
-      songs: 32,
-      imageUrl: 'https://images.unsplash.com/photo-1740459057005-65f000db582f?w=300',
-      isPrivate: false,
-      downloaded: false,
-    },
-    {
-      title: 'Chill Vibes',
-      songs: 28,
-      imageUrl: 'https://images.unsplash.com/photo-1662012061995-0cd4a7ef2d12?w=300',
-      isPrivate: true,
-      downloaded: true,
-    },
-    {
-      title: 'Focus Flow',
-      songs: 18,
-      imageUrl: null,
-      isPrivate: false,
-      downloaded: false,
-      gradient: 'from-purple-500 to-pink-500',
-    },
-    {
-      title: 'Party Hits',
-      songs: 56,
-      imageUrl: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=300',
-      isPrivate: false,
-      downloaded: true,
-    },
-    {
-      title: 'Road Trip',
-      songs: 41,
-      imageUrl: null,
-      isPrivate: false,
-      downloaded: false,
-      gradient: 'from-orange-500 to-red-500',
-    },
-  ];
+  // Fetch songs on component mount or when category changes
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        if (category === 'playlists') {
+          // Fetch playlists
+          const fetchedPlaylists = await getPlaylists();
+          setPlaylists(fetchedPlaylists);
+          setLoading(false);
+          return;
+        }
 
-  const albums = [
-    {
-      title: 'Interstellar',
-      artist: 'Nova Pulse',
-      imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=300',
-      year: 2025,
-    },
-    {
-      title: 'Retrograde',
-      artist: 'Synthwave',
-      imageUrl: 'https://images.unsplash.com/photo-1744907529553-dc603ead4d4e?w=300',
-      year: 2024,
-    },
-    {
-      title: 'Digital Hearts',
-      artist: 'Echo Dreams',
-      imageUrl: 'https://images.unsplash.com/photo-1582024959432-aee9b60ff4e8?w=300',
-      year: 2024,
-    },
-  ];
+        const fetchedSongs = await getSongs();
+        setSongs(fetchedSongs);
 
-  const artists = [
-    {
-      name: 'Nova Pulse',
-      followers: '2.4M',
-      imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300',
-    },
-    {
-      name: 'Echo Dreams',
-      followers: '1.8M',
-      imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300',
-    },
-    {
-      name: 'Synthwave',
-      followers: '3.2M',
-      imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300',
-    },
-  ];
+        // Extract unique artists from songs
+        const artistMap = new Map<string, Artist>();
+        const albumMap = new Map<string, Album>();
 
-  // Liked Songs Data
-  const likedSongs = [
-    {
-      id: 1,
-      title: 'Neon Dreams',
-      artist: 'Cyber Pulse',
-      album: 'Digital Horizons',
-      duration: '3:45',
-      imageUrl: 'https://images.unsplash.com/photo-1692176548571-86138128e36c?w=100',
-      isLiked: true,
-      isDownloaded: true,
-      addedAt: '2 days ago',
-    },
-    {
-      id: 2,
-      title: 'Electric Shadows',
-      artist: 'Nova Wave',
-      album: 'Retrograde',
-      duration: '4:12',
-      imageUrl: 'https://images.unsplash.com/photo-1744907529553-dc603ead4d4e?w=100',
-      isLiked: true,
-      isDownloaded: false,
-      addedAt: '5 days ago',
-    },
-    {
-      id: 3,
-      title: 'Midnight Velocity',
-      artist: 'Echo Dreams',
-      album: 'Night Drive',
-      duration: '3:58',
-      imageUrl: 'https://images.unsplash.com/photo-1662012061995-0cd4a7ef2d12?w=100',
-      isLiked: true,
-      isDownloaded: true,
-      addedAt: '1 week ago',
-    },
-    {
-      id: 4,
-      title: 'Crystal Skies',
-      artist: 'Aurora Sound',
-      album: 'Ethereal',
-      duration: '5:23',
-      imageUrl: 'https://images.unsplash.com/photo-1582024959432-aee9b60ff4e8?w=100',
-      isLiked: true,
-      isDownloaded: false,
-      addedAt: '1 week ago',
-    },
-    {
-      id: 5,
-      title: 'Synthetic Love',
-      artist: 'Digital Hearts',
-      album: 'Future Romance',
-      duration: '3:34',
-      imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100',
-      isLiked: true,
-      isDownloaded: true,
-      addedAt: '2 weeks ago',
-    },
-    {
-      id: 6,
-      title: 'Cosmic Journey',
-      artist: 'Stellar Beats',
-      album: 'Space Odyssey',
-      duration: '4:45',
-      imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100',
-      isLiked: true,
-      isDownloaded: false,
-      addedAt: '2 weeks ago',
-    },
-    {
-      id: 7,
-      title: 'Urban Pulse',
-      artist: 'City Lights',
-      album: 'Metro',
-      duration: '3:21',
-      imageUrl: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=100',
-      isLiked: true,
-      isDownloaded: true,
-      addedAt: '3 weeks ago',
-    },
-    {
-      id: 8,
-      title: 'Serenity Now',
-      artist: 'Calm Waves',
-      album: 'Meditation Mix',
-      duration: '6:12',
-      imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100',
-      isLiked: true,
-      isDownloaded: false,
-      addedAt: '3 weeks ago',
-    },
-    {
-      id: 9,
-      title: 'Thunder Road',
-      artist: 'Rock Legends',
-      album: 'Greatest Hits',
-      duration: '4:28',
-      imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100',
-      isLiked: true,
-      isDownloaded: true,
-      addedAt: '1 month ago',
-    },
-    {
-      id: 10,
-      title: 'Deep Focus',
-      artist: 'Concentration',
-      album: 'Study Beats',
-      duration: '5:56',
-      imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=100',
-      isLiked: true,
-      isDownloaded: false,
-      addedAt: '1 month ago',
-    },
-    {
-      id: 11,
-      title: 'Solar Flare',
-      artist: 'Cosmic Energy',
-      album: 'Universe',
-      duration: '4:02',
-      imageUrl: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=100',
-      isLiked: true,
-      isDownloaded: true,
-      addedAt: '1 month ago',
-    },
-    {
-      id: 12,
-      title: 'Velvet Nights',
-      artist: 'Smooth Jazz',
-      album: 'Late Night Sessions',
-      duration: '5:18',
-      imageUrl: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=100',
-      isLiked: true,
-      isDownloaded: false,
-      addedAt: '2 months ago',
-    },
-  ];
+        fetchedSongs.forEach((song) => {
+          if (song.artist && song.artist.id) {
+            artistMap.set(song.artist.id, song.artist);
+          }
+          if (song.album && song.album.id) {
+            albumMap.set(song.album.id, song.album);
+          }
+        });
+
+        setArtists(Array.from(artistMap.values()));
+        setAlbums(Array.from(albumMap.values()));
+
+        // Fetch liked songs and followed artists if needed
+        if (category === 'songs') {
+          try {
+            const liked = await getLikedSongs();
+            setLikedSongs(liked);
+          } catch (err) {
+            console.error('Error fetching liked songs:', err);
+          }
+        }
+
+        if (category === 'artists') {
+          try {
+            const followed = await getFollowedArtists();
+            setFollowedArtists(followed);
+          } catch (err) {
+            console.error('Error fetching followed artists:', err);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching songs:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load music');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [category]);
+
+  // Handle create playlist
+  const handleCreatePlaylist = async (title: string, isPublic: boolean) => {
+    const newPlaylist = await createPlaylist(title, isPublic);
+    setPlaylists(prev => [newPlaylist, ...prev]);
+  };
+
+  // Helper function to get song count for an artist
+  const getArtistSongCount = (artistId: string): number => {
+    return songs.filter(song => song.artist_id === artistId || song.artist?.id === artistId).length;
+  };
+
+  // Helper function to get song count for an album
+  const getAlbumSongCount = (albumId: string): number => {
+    return songs.filter(song => song.album_id === albumId || song.album?.id === albumId).length;
+  };
 
   // Filter and search songs
-  const filteredSongs = likedSongs.filter(song => {
+  const filteredSongs = songs.filter(song => {
     const matchesSearch = song.title.toLowerCase().includes(songsSearchQuery.toLowerCase()) ||
-                         song.artist.toLowerCase().includes(songsSearchQuery.toLowerCase()) ||
-                         song.album.toLowerCase().includes(songsSearchQuery.toLowerCase());
+                         (song.artist_name || song.artist?.stage_name || '').toLowerCase().includes(songsSearchQuery.toLowerCase()) ||
+                         (song.album_title || song.album?.title || '').toLowerCase().includes(songsSearchQuery.toLowerCase());
     
-    if (songsFilter === 'Downloaded') return matchesSearch && song.isDownloaded;
-    if (songsFilter === 'Offline Available') return matchesSearch && song.isDownloaded;
-    if (songsFilter === 'Favorites') return matchesSearch && song.isLiked;
-    
+    // Note: Downloaded/Offline filters would require additional backend data
+    // For now, we'll just filter by search query
     return matchesSearch;
   });
+
+  // Sort songs
+  const sortedSongs = [...filteredSongs].sort((a, b) => {
+    switch (songsSortBy) {
+      case 'A → Z':
+        return a.title.localeCompare(b.title);
+      case 'Artist':
+        const artistA = a.artist_name || a.artist?.stage_name || '';
+        const artistB = b.artist_name || b.artist?.stage_name || '';
+        return artistA.localeCompare(artistB);
+      case 'Most Played':
+        // Would need play count from backend
+        return 0;
+      case 'Recently Added':
+      default:
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+  });
+
+  // Transform songs to Track format for TrackTable
+  const likedSongIds = new Set(likedSongs.map(ls => ls.song_id));
+  const tracksForTable = sortedSongs.map((song, index) => ({
+    number: index + 1,
+    title: song.title,
+    artist: song.artist_name || song.artist?.stage_name || 'Unknown Artist',
+    album: song.album_title || song.album?.title || 'Unknown Album',
+    duration: formatDuration(song.duration),
+    liked: likedSongIds.has(song.id),
+    songId: song.id, // Add song ID for like functionality
+    song: song, // Include full song object for navigation
+  }));
 
   // Get category title
   const getCategoryTitle = () => {
@@ -276,111 +175,253 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
     switch (category) {
       case 'playlists':
         return (
-          <div className="grid grid-cols-5 gap-6">
-            {/* Create Playlist Card */}
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-br from-[#00ff88]/20 to-[#00cc6e]/20 border-2 border-dashed border-[#00ff88] rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center aspect-square"
-            >
-              <div className="w-16 h-16 bg-[#00ff88] rounded-full flex items-center justify-center mb-4">
-                <Plus className="w-8 h-8 text-black" />
-              </div>
-              <h3 className="text-white">Create Playlist</h3>
-            </motion.div>
-
-            {/* Playlist Cards */}
-            {playlists.map((playlist, index) => (
+          <>
+            <div className="grid grid-cols-5 gap-6">
+              {/* Create Playlist Card */}
               <motion.div
-                key={index}
                 whileHover={{ scale: 1.05 }}
-                className="group cursor-pointer"
-                onClick={() => onNavigate('playlist', playlist)}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsCreatePlaylistDialogOpen(true)}
+                className="bg-gradient-to-br from-[#00ff88]/20 to-[#00cc6e]/20 border-2 border-dashed border-[#00ff88] rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center aspect-square"
               >
-                <div className="relative bg-[#1a1a1a] rounded-xl overflow-hidden mb-4 aspect-square">
-                  {playlist.imageUrl ? (
-                    <ImageWithFallback
-                      src={playlist.imageUrl}
-                      alt={playlist.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${playlist.gradient} flex items-center justify-center`}>
-                      <ListMusic className="w-16 h-16 text-white/50" />
-                    </div>
-                  )}
+                <div className="w-16 h-16 bg-[#00ff88] rounded-full flex items-center justify-center mb-4">
+                  <Plus className="w-8 h-8 text-black" />
                 </div>
-                <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate">
-                  {playlist.title}
-                </h3>
-                <p className="text-gray-400 text-sm">{playlist.songs} songs</p>
+                <h3 className="text-white">Create Playlist</h3>
               </motion.div>
-            ))}
-          </div>
+
+              {/* Playlist Cards */}
+              {playlists.map((playlist) => {
+                // Get first song's image or use default gradient
+                const imageUrl = playlist.songs && playlist.songs.length > 0 
+                  ? playlist.songs[0].song?.image_url || null
+                  : null;
+                
+                return (
+                  <motion.div
+                    key={playlist.id}
+                    whileHover={{ scale: 1.05 }}
+                    className="group cursor-pointer"
+                    onClick={() => onNavigate('playlist', { 
+                      id: playlist.id,
+                      title: playlist.title,
+                      description: `${playlist.song_count} songs`,
+                      imageUrl: imageUrl || undefined,
+                    })}
+                  >
+                    <div className="relative bg-[#1a1a1a] rounded-xl overflow-hidden mb-4 aspect-square">
+                      {imageUrl ? (
+                        <ImageWithFallback
+                          src={imageUrl}
+                          alt={playlist.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-[#00ff88]/20 to-[#a855f7]/20 flex items-center justify-center">
+                          <ListMusic className="w-16 h-16 text-white/50" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate">
+                      {playlist.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {playlist.song_count} {playlist.song_count === 1 ? 'song' : 'songs'}
+                      {playlist.is_public && ' • Public'}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+            
+            <CreatePlaylistDialog
+              isOpen={isCreatePlaylistDialogOpen}
+              onClose={() => setIsCreatePlaylistDialogOpen(false)}
+              onCreate={handleCreatePlaylist}
+            />
+          </>
         );
 
       case 'albums':
+        if (loading) {
+          return (
+            <div className="flex items-center justify-center py-16">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
+                <p className="text-gray-400">Loading albums...</p>
+              </div>
+            </div>
+          );
+        }
+
+        if (error) {
+          return (
+            <div className="text-center py-16">
+              <p className="text-red-400 mb-4">Error: {error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Retry
+              </Button>
+            </div>
+          );
+        }
+
+        if (albums.length === 0) {
+          return (
+            <div className="text-center py-16">
+              <ListMusic className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-white text-xl mb-2">No albums found</h3>
+              <p className="text-gray-400">Import songs to see albums here</p>
+            </div>
+          );
+        }
+
         return (
           <div className="grid grid-cols-5 gap-6">
-            {albums.map((album, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => onNavigate('album', {
-                  title: album.title,
-                  artist: album.artist,
-                  imageUrl: album.imageUrl,
-                  year: album.year.toString(),
-                })}
-                className="group cursor-pointer"
-              >
-                <div className="relative bg-[#1a1a1a] rounded-xl overflow-hidden mb-4 aspect-square">
-                  <ImageWithFallback
-                    src={album.imageUrl}
-                    alt={album.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-                <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate">
-                  {album.title}
-                </h3>
-                <p className="text-gray-400 text-sm">{album.artist} • {album.year}</p>
-              </motion.div>
-            ))}
+            {albums.map((album) => {
+              const songCount = getAlbumSongCount(album.id);
+              const releaseYear = album.release_date ? new Date(album.release_date).getFullYear() : null;
+              return (
+                <motion.div
+                  key={album.id}
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => onNavigate('album', {
+                    id: album.id,
+                    title: album.title,
+                    artist: album.artist_name || album.artist?.stage_name || 'Unknown Artist',
+                    imageUrl: album.cover_pic_url,
+                    year: releaseYear?.toString() || '',
+                  })}
+                  className="group cursor-pointer"
+                >
+                  <div className="relative bg-[#1a1a1a] rounded-xl overflow-hidden mb-4 aspect-square">
+                    <ImageWithFallback
+                      src={album.cover_pic_url}
+                      alt={album.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                  <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate">
+                    {album.title}
+                  </h3>
+                  <p className="text-gray-400 text-sm">
+                    {album.artist_name || album.artist?.stage_name || 'Unknown Artist'}
+                    {releaseYear && ` • ${releaseYear}`}
+                  </p>
+                  <p className="text-gray-500 text-xs mt-1">{songCount} {songCount === 1 ? 'song' : 'songs'}</p>
+                </motion.div>
+              );
+            })}
           </div>
         );
 
       case 'artists':
+        if (loading) {
+          return (
+            <div className="flex items-center justify-center py-16">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
+                <p className="text-gray-400">Loading artists...</p>
+              </div>
+            </div>
+          );
+        }
+
+        if (error) {
+          return (
+            <div className="text-center py-16">
+              <p className="text-red-400 mb-4">Error: {error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Retry
+              </Button>
+            </div>
+          );
+        }
+
+        // Show followed artists if available, otherwise show all artists
+        const followedArtistIds = new Set(followedArtists.map(fa => fa.artist_id));
+        const artistsToShow = followedArtists.length > 0
+          ? artists.filter(artist => followedArtistIds.has(artist.id))
+          : artists;
+
+        if (artistsToShow.length === 0) {
+          return (
+            <div className="text-center py-16">
+              <ListMusic className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-white text-xl mb-2">
+                {followedArtists.length > 0 ? 'No followed artists' : 'No artists found'}
+              </h3>
+              <p className="text-gray-400">
+                {followedArtists.length > 0 
+                  ? 'You haven\'t followed any artists yet' 
+                  : 'Import songs to see artists here'}
+              </p>
+            </div>
+          );
+        }
+
         return (
           <div className="grid grid-cols-5 gap-6">
-            {artists.map((artist, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => onNavigate('artist', {
-                  name: artist.name,
-                  genre: 'Electronic',
-                  imageUrl: artist.imageUrl,
-                })}
-                className="group cursor-pointer"
-              >
-                <div className="relative bg-[#1a1a1a] rounded-full overflow-hidden mb-4 aspect-square">
-                  <ImageWithFallback
-                    src={artist.imageUrl}
-                    alt={artist.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-                <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate text-center">
-                  {artist.name}
-                </h3>
-                <p className="text-gray-400 text-sm text-center">{artist.followers} followers</p>
-              </motion.div>
-            ))}
+            {artistsToShow.map((artist) => {
+              const songCount = getArtistSongCount(artist.id);
+              const isFollowed = followedArtistIds.has(artist.id);
+              return (
+                <motion.div
+                  key={artist.id}
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => onNavigate('artist', {
+                    id: artist.id,
+                    stage_name: artist.stage_name,
+                    verified: artist.verified,
+                  })}
+                  className="group cursor-pointer"
+                >
+                  <div className="relative bg-[#1a1a1a] rounded-full overflow-hidden mb-4 aspect-square">
+                    <ImageWithFallback
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${artist.stage_name}`}
+                      alt={artist.stage_name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    {isFollowed && (
+                      <div className="absolute top-2 right-2 bg-[#00ff88] text-black text-xs px-2 py-1 rounded-full font-semibold">
+                        Following
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate text-center">
+                    {artist.stage_name}
+                  </h3>
+                  <p className="text-gray-400 text-sm text-center">
+                    {songCount} {songCount === 1 ? 'song' : 'songs'}
+                  </p>
+                </motion.div>
+              );
+            })}
           </div>
         );
 
       case 'songs':
+        if (loading) {
+          return (
+            <div className="flex items-center justify-center py-16">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
+                <p className="text-gray-400">Loading songs...</p>
+              </div>
+            </div>
+          );
+        }
+
+        if (error) {
+          return (
+            <div className="text-center py-16">
+              <p className="text-red-400 mb-4">Error: {error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Retry
+              </Button>
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6">
             {/* Premium Summary Card */}
@@ -421,15 +462,15 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
                     className="absolute inset-0 bg-white/30 rounded-full blur-2xl"
                   />
                   <div className="relative w-24 h-24 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20">
-                    <Heart className="w-12 h-12 text-white fill-white" />
+                    <Music className="w-12 h-12 text-white fill-white" />
                   </div>
                 </div>
 
                 {/* Text Content */}
                 <div className="flex-1">
-                  <h2 className="text-white text-3xl mb-2">Your Liked Songs</h2>
-                  <p className="text-white/80 text-lg mb-1">{likedSongs.length} songs</p>
-                  <p className="text-white/60 text-sm">Your favorite tracks all in one place</p>
+                  <h2 className="text-white text-3xl mb-2">All Songs</h2>
+                  <p className="text-white/80 text-lg mb-1">{songs.length} songs</p>
+                  <p className="text-white/60 text-sm">Your music library</p>
                 </div>
 
                 {/* Play All Button */}
@@ -535,123 +576,14 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
               </div>
             </div>
 
-            {/* Songs List Header */}
-            <div className="grid grid-cols-[48px_1fr_1fr_80px_48px_48px] gap-4 px-4 py-2 text-gray-400 text-sm border-b border-[#1a1a1a]">
-              <div className="text-center">#</div>
-              <div>Title</div>
-              <div>Album</div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-              </div>
-              <div></div>
-              <div></div>
-            </div>
-
-            {/* Songs List */}
-            <div className="space-y-1">
-              {filteredSongs.map((song, index) => (
-                <motion.div
-                  key={song.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  whileHover={{ backgroundColor: 'rgba(26, 26, 26, 0.5)' }}
-                  onClick={() => onNavigate('song', {
-                    title: song.title,
-                    artist: song.artist,
-                    album: song.album,
-                    duration: song.duration,
-                    imageUrl: song.imageUrl,
-                  })}
-                  className="grid grid-cols-[48px_1fr_1fr_80px_48px_48px] gap-4 px-4 py-3 rounded-lg cursor-pointer group items-center"
-                >
-                  {/* Song Cover */}
-                  <div className="relative w-12 h-12 rounded-md overflow-hidden shadow-lg">
-                    <ImageWithFallback
-                      src={song.imageUrl}
-                      alt={song.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      whileHover={{ opacity: 1 }}
-                      className="absolute inset-0 bg-black/60 flex items-center justify-center"
-                    >
-                      <Play className="w-5 h-5 text-white fill-white" />
-                    </motion.div>
-                  </div>
-
-                  {/* Title & Artist */}
-                  <div className="min-w-0">
-                    <h4 className="text-white truncate group-hover:text-[#00ff88] transition-colors">
-                      {song.title}
-                    </h4>
-                    <p className="text-gray-400 text-sm truncate">{song.artist}</p>
-                  </div>
-
-                  {/* Album */}
-                  <div className="text-gray-400 text-sm truncate">
-                    {song.album}
-                  </div>
-
-                  {/* Duration */}
-                  <div className="text-gray-400 text-sm">
-                    {song.duration}
-                  </div>
-
-                  {/* Heart Icon */}
-                  <div className="flex items-center justify-center">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="opacity-100 group-hover:opacity-100"
-                    >
-                      <Heart className={`w-5 h-5 ${song.isLiked ? 'text-[#00ff88] fill-[#00ff88]' : 'text-gray-400'}`} />
-                    </motion.button>
-                  </div>
-
-                  {/* More Options */}
-                  <div className="flex items-center justify-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <MoreVertical className="w-5 h-5 text-gray-400 hover:text-white" />
-                        </motion.button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                        <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-[#252525]">
-                          Add to Playlist
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-[#252525]">
-                          Go to Artist
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-[#252525]">
-                          Go to Album
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-[#2a2a2a]" />
-                        <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-[#252525]">
-                          Share
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-[#252525]">
-                          Remove from Liked Songs
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Empty State */}
-            {filteredSongs.length === 0 && (
+            {/* TrackTable Component */}
+            {sortedSongs.length > 0 ? (
+              <TrackTable tracks={tracksForTable} onNavigate={onNavigate} />
+            ) : (
               <div className="text-center py-16">
-                <Heart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <Music className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                 <h3 className="text-white text-xl mb-2">No songs found</h3>
-                <p className="text-gray-400">Try adjusting your search or filters</p>
+                <p className="text-gray-400">Try adjusting your search or import some songs</p>
               </div>
             )}
           </div>
@@ -664,7 +596,7 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
 
   return (
     <ScrollArea className="flex-1 h-full">
-      <div className="p-8">
+      <div className="p-8 pb-32">
         {/* Header - No gap, immediately after title */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-white text-4xl">{getCategoryTitle()}</h1>
