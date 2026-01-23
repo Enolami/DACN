@@ -11,7 +11,7 @@ import type {
   PlaylistSong
 } from '../types/music';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const ACCESS_TOKEN_KEY = 'authAccessToken';
 const REFRESH_TOKEN_KEY = 'authRefreshToken';
