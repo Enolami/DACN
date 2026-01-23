@@ -98,6 +98,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database configuration - prefer SUPABASE_DB_URL if available (for production)
+# Database configuration - prefer SUPABASE_DB_URL if available (for production)
 SUPABASE_DB_URL = config('SUPABASE_DB_URL', default=None)
 
 if SUPABASE_DB_URL:
@@ -107,11 +108,10 @@ if SUPABASE_DB_URL:
     match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', SUPABASE_DB_URL)
     if match:
         db_user, db_password, db_host, db_port, db_name = match.groups()
-        # Use direct connection instead of pooler (replace pooler with direct)
-        # Pooler format: db.xxx.pooler.supabase.com
-        # Direct format: db.xxx.supabase.co
-        if 'pooler' in db_host:
-            db_host = db_host.replace('.pooler', '')
+        
+        # --------------------------------------------------------
+        # I DELETED THE LOGIC THAT REMOVED '.pooler'
+        # --------------------------------------------------------
         
         DATABASES = {
             "default": {
@@ -120,26 +120,17 @@ if SUPABASE_DB_URL:
                 'USER': db_user,
                 'PASSWORD': db_password,
                 'HOST': db_host,
-                'PORT': db_port,
+                'PORT': int(db_port), # Ensure this is an integer
                 'OPTIONS': {
-                    'connect_timeout': 10,  # 10 second connection timeout
-                    'sslmode': 'require',  # Supabase requires SSL
+                    'connect_timeout': 10,
+                    'sslmode': 'require',
                 },
-                'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
+                'CONN_MAX_AGE': 0,
             }
         }
     else:
-        # Fallback to individual config if URL parsing fails
-        DATABASES = {
-            "default": {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': config('DB_NAME'),
-                'USER': config('DB_USER'),
-                'PASSWORD': config('DB_PASSWORD'),
-                'HOST': config('DB_HOST', default='localhost'),
-                'PORT': config('DB_PORT', default='5432'),
-            }
-        }
+        # Fallback if regex fails
+        pass 
 else:
     # Use individual database config (for local development)
     DATABASES = {
