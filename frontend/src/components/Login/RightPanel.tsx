@@ -78,10 +78,12 @@ export function RightPanel({
     fetchData();
   }, [currentSong]);
 
+  const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+
   return (
     <div className="w-80 bg-black h-full border-l border-[#1a1a1a] flex flex-col">
-      <Tabs defaultValue="queue" className="flex-1 flex flex-col">
-        <div className="p-6 pb-0">
+      <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as any)} className="flex-1 flex flex-col">
+        <div className="px-6 pb-0">
           <TabsList className="bg-[#0a0a0a] text-gray-400 inline-flex h-10 w-full items-center justify-center rounded-lg p-1 border border-[#333333]">
             <TabsTrigger 
               value="queue" 
@@ -100,7 +102,8 @@ export function RightPanel({
           </TabsList>
         </div>
 
-        <TabsContent value="queue" className="flex-1 flex flex-col m-0 mt-4">
+        {activeTab === 'queue' && (
+        <TabsContent value="queue" className="flex-1 flex flex-col m-0">
           <div className="px-6 pb-4 flex items-center justify-between">
             <div>
               <h3 className="text-white text-sm font-medium">Up Next</h3>
@@ -249,8 +252,10 @@ export function RightPanel({
             )}
           </ScrollArea>
         </TabsContent>
+        )}
 
-        <TabsContent value="history" className="flex-1 flex flex-col m-0 mt-4">
+        {activeTab === 'history' && (
+        <TabsContent value="history" className="flex-1 flex flex-col m-0">
           <div className="px-6 pb-4">
             <h3 className="text-white text-sm font-medium">Recently Played</h3>
             <p className="text-gray-400 text-xs mt-1">{recentlyPlayed.length} songs</p>
@@ -290,6 +295,7 @@ export function RightPanel({
             )}
           </ScrollArea>
         </TabsContent>
+        )}
       </Tabs>
     </div>
   );
