@@ -22,6 +22,14 @@ urlpatterns = [
     path("artists/<uuid:pk>/unfollow/", views.UnfollowArtistView.as_view(), name="artist-unfollow"),
     path("followed-artists/", views.UserFollowedArtistsView.as_view(), name="user-followed-artists"),
 
+    # Playlist Management
+    path("playlists/", views.PlaylistListCreateView.as_view(), name="playlist-list-create"),
+    path("playlists/<uuid:pk>/", views.PlaylistDetailView.as_view(), name="playlist-detail"),
+    path("playlists/<uuid:pk>/songs/", views.PlaylistSongsView.as_view(), name="playlist-songs"),
+    path("playlists/<uuid:pk>/songs/<uuid:song_id>/", views.AddSongToPlaylistView.as_view(), name="playlist-add-song"),
+    path("playlists/<uuid:pk>/songs/<uuid:song_id>/remove/", views.RemoveSongFromPlaylistView.as_view(), name="playlist-remove-song"),
+    path("playlists/<uuid:pk>/reorder/", views.ReorderPlaylistSongsView.as_view(), name="playlist-reorder"),
+
     # Streaming Endpoint (Standard HTTP)
     path("stream/<uuid:pk>/", views.stream_audio, name="stream-audio"),
     path("dashboard/", views.dashboard_view, name="music-dashboard"),

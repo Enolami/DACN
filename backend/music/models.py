@@ -4,13 +4,15 @@ import uuid
 
 class Artist(models.Model):
     """
-    Extension of the User table for artist-specific data.
+    Artist model for music artists (no longer tied to User).
+    Used for Jamendo imports and general artist information.
 
     Schema reference:
       Artist {
         id string pk
-        user_id User [ref, required]
         stage_name string
+        image_url string (optional, from Jamendo)
+        jamendo_artist_id string (optional, for tracking Jamendo artists)
         verified bool
         created_at datetime
         updated_at datetime
@@ -18,15 +20,18 @@ class Artist(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="artist_profile",
-    )
     stage_name = models.CharField(max_length=255)
+    image_url = models.URLField(max_length=500, blank=True, null=True, help_text="Artist image URL from Jamendo or other sources")
+    jamendo_artist_id = models.CharField(max_length=100, blank=True, null=True, unique=True, db_index=True, help_text="Jamendo artist ID for tracking")
     verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        # Ensure unique jamendo_artist_id when it's not null
+        constraints = [
+            models.UniqueConstraint(fields=['jamendo_artist_id'], condition=models.Q(jamendo_artist_id__isnull=False), name='unique_jamendo_artist_id')
+        ]
 
     def __str__(self) -> str:  # pragma: no cover
         return self.stage_name

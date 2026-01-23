@@ -70,7 +70,7 @@ export function SearchPage({ onNavigate }: SearchPageProps) {
 
   return (
     <ScrollArea className="flex-1 h-full bg-black">
-      <div className="p-6 md:p-8">
+      <div className="p-6 md:p-8 pb-32">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-white text-3xl font-bold mb-2">Search Jamendo</h1>

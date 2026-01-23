@@ -22,9 +22,10 @@ interface MusicPlayerProps {
   };
   isPlaying?: boolean;
   onPlayPause?: (playing: boolean) => void;
+  onSongEnd?: () => void;
 }
 
-export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause }: MusicPlayerProps) {
+export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause, onSongEnd }: MusicPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const isPlayingRef = useRef(externalIsPlaying); // Ref to track current playing state
   const isSeekingRef = useRef(false); // Ref to track if user is seeking
@@ -136,6 +137,10 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying:
       setIsPlaying(false);
       onPlayPause?.(false);
       setCurrentTime(0);
+      // Call onSongEnd callback if provided (for auto-playing next song)
+      if (onSongEnd) {
+        onSongEnd();
+      }
     };
 
     // Handle errors

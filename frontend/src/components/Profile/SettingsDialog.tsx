@@ -1,7 +1,9 @@
-import { X, Settings, User, Bell, Lock, Globe, Volume2, LogOut, Moon, Sun } from 'lucide-react';
+import { X, Settings, User, Bell, Lock, Globe, LogOut, Moon, Sun } from 'lucide-react';
 import { Button } from '../Login/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getProfile, updateProfile } from '../../services/api';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -10,12 +12,59 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onClose, onLogout }: SettingsDialogProps) {
-  const [audioQuality, setAudioQuality] = useState<'low' | 'medium' | 'high'>('high');
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [privateProfile, setPrivateProfile] = useState(false);
   const [language, setLanguage] = useState('en');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    // Load theme from localStorage
+    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
+    return savedTheme || 'dark';
+  });
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load profile data on mount
+  useEffect(() => {
+    if (isOpen) {
+      const loadProfile = async () => {
+        try {
+          const profile = await getProfile();
+          setPrivateProfile(profile.is_private || false);
+        } catch (err) {
+          console.error('Failed to load profile:', err);
+        }
+      };
+      loadProfile();
+    }
+  }, [isOpen]);
+
+  // Apply theme to document
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Save privacy setting
+  const handlePrivacyChange = async (value: boolean) => {
+    setPrivateProfile(value);
+    setIsLoading(true);
+    try {
+      await updateProfile(undefined, undefined, value);
+    } catch (err) {
+      console.error('Failed to update privacy:', err);
+      // Revert on error
+      setPrivateProfile(!value);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     if (onLogout) {
@@ -69,35 +118,6 @@ export function SettingsDialog({ isOpen, onClose, onLogout }: SettingsDialogProp
 
               {/* Content - Scrollable */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Audio Quality */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Volume2 className="w-5 h-5 text-[#00ff88]" />
-                    <h3 className="text-white font-medium">Audio Quality</h3>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded-xl p-4 space-y-2">
-                    {(['low', 'medium', 'high'] as const).map((quality) => (
-                      <label
-                        key={quality}
-                        className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-[#252525] transition-colors"
-                      >
-                        <input
-                          type="radio"
-                          name="audioQuality"
-                          value={quality}
-                          checked={audioQuality === quality}
-                          onChange={(e) => setAudioQuality(e.target.value as 'low' | 'medium' | 'high')}
-                          className="w-4 h-4 text-[#00ff88] bg-[#1a1a1a] border-[#2a2a2a] focus:ring-[#00ff88] focus:ring-2"
-                        />
-                        <span className="text-gray-300 capitalize">{quality}</span>
-                        {quality === 'high' && (
-                          <span className="ml-auto text-xs text-[#00ff88] bg-[#00ff88]/20 px-2 py-1 rounded">Recommended</span>
-                        )}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Notifications */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
@@ -145,8 +165,9 @@ export function SettingsDialog({ isOpen, onClose, onLogout }: SettingsDialogProp
                       <input
                         type="checkbox"
                         checked={privateProfile}
-                        onChange={(e) => setPrivateProfile(e.target.checked)}
-                        className="w-5 h-5 rounded bg-[#1a1a1a] border-[#2a2a2a] text-[#00ff88] focus:ring-[#00ff88] focus:ring-2"
+                        onChange={(e) => handlePrivacyChange(e.target.checked)}
+                        disabled={isLoading}
+                        className="w-5 h-5 rounded bg-[#1a1a1a] border-[#2a2a2a] text-[#00ff88] focus:ring-[#00ff88] focus:ring-2 disabled:opacity-50"
                       />
                     </label>
                   </div>
@@ -195,7 +216,11 @@ export function SettingsDialog({ isOpen, onClose, onLogout }: SettingsDialogProp
                           name="theme"
                           value={themeOption}
                           checked={theme === themeOption}
-                          onChange={(e) => setTheme(e.target.value as 'dark' | 'light')}
+                          onChange={(e) => {
+                            const newTheme = e.target.value as 'dark' | 'light';
+                            setTheme(newTheme);
+                            localStorage.setItem('theme', newTheme);
+                          }}
                           className="w-4 h-4 text-[#00ff88] bg-[#1a1a1a] border-[#2a2a2a] focus:ring-[#00ff88] focus:ring-2"
                         />
                         <span className="text-gray-300 capitalize">{themeOption}</span>
@@ -213,15 +238,10 @@ export function SettingsDialog({ isOpen, onClose, onLogout }: SettingsDialogProp
                   <div className="bg-[#1a1a1a] rounded-xl p-4 space-y-2">
                     <Button
                       variant="outline"
+                      onClick={() => setIsChangePasswordOpen(true)}
                       className="w-full border-[#2a2a2a] hover:bg-[#252525] text-gray-300 hover:text-white justify-start"
                     >
                       Change Password
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full border-[#2a2a2a] hover:bg-[#252525] text-gray-300 hover:text-white justify-start"
-                    >
-                      Download Your Data
                     </Button>
                   </div>
                 </div>
@@ -241,6 +261,10 @@ export function SettingsDialog({ isOpen, onClose, onLogout }: SettingsDialogProp
           </motion.div>
         </>
       )}
+      <ChangePasswordDialog
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </AnimatePresence>
   );
 }

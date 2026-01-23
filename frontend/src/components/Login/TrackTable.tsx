@@ -18,9 +18,11 @@ interface Track {
 interface TrackTableProps {
   tracks: Track[];
   onNavigate?: (page: string, data?: any) => void;
+  onRemoveFromPlaylist?: (songId: string) => void;
+  showRemoveButton?: boolean;
 }
 
-export function TrackTable({ tracks, onNavigate }: TrackTableProps) {
+export function TrackTable({ tracks, onNavigate, onRemoveFromPlaylist, showRemoveButton = false }: TrackTableProps) {
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
 
   // Fetch liked songs on mount

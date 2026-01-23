@@ -6,8 +6,9 @@ import { ArtistCard } from './ArtistCard';
 import { Badge } from './ui/badge';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
-import { getSongs, followArtist, unfollowArtist, getFollowedArtists, formatDuration } from '../../services/api';
+import { getSongs, followArtist, unfollowArtist, getFollowedArtists, getArtistFollowerCount, formatDuration } from '../../services/api';
 import { TrackTable } from './TrackTable';
+import { generateDefaultAvatar } from '../../utils/avatarUtils';
 import type { Song, Artist, Album } from '../../types/music';
 
 interface ArtistProfileProps {
@@ -28,6 +29,7 @@ export function ArtistProfile({ artist: initialArtist, onNavigate }: ArtistProfi
   const [artistSongs, setArtistSongs] = useState<Song[]>([]);
   const [artistAlbums, setArtistAlbums] = useState<Album[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [containerReady, setContainerReady] = useState(false);
@@ -88,6 +90,16 @@ export function ArtistProfile({ artist: initialArtist, onNavigate }: ArtistProfi
         const followedArtists = await getFollowedArtists();
         const followed = followedArtists.some(fa => fa.artist_id === artistId);
         setIsFollowing(followed);
+
+        // Fetch follower count
+        try {
+          const followerData = await getArtistFollowerCount(artistId);
+          setFollowerCount(followerData.follower_count);
+        } catch (err) {
+          console.error('Error fetching follower count:', err);
+          // Set to 0 on error, don't fail the whole page
+          setFollowerCount(0);
+        }
       } catch (err) {
         console.error('Error fetching artist data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load artist');
@@ -115,9 +127,13 @@ export function ArtistProfile({ artist: initialArtist, onNavigate }: ArtistProfi
       if (isFollowing) {
         await unfollowArtist(artist.id);
         setIsFollowing(false);
+        // Update follower count
+        setFollowerCount(prev => Math.max(0, prev - 1));
       } else {
         await followArtist(artist.id);
         setIsFollowing(true);
+        // Update follower count
+        setFollowerCount(prev => prev + 1);
       }
     } catch (err) {
       console.error('Error toggling follow:', err);
@@ -151,7 +167,8 @@ export function ArtistProfile({ artist: initialArtist, onNavigate }: ArtistProfi
   }
 
   const artistName = artist.stage_name || initialArtist.name || 'Unknown Artist';
-  const artistImageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${artistName}`;
+  // Use artist image_url if available, otherwise generate avatar from first letter
+  const artistImageUrl = artist.image_url || generateDefaultAvatar(artistName);
 
   // Transform songs to Track format
   const tracksForTable = artistSongs.map((song, index) => ({
@@ -445,29 +462,15 @@ export function ArtistProfile({ artist: initialArtist, onNavigate }: ArtistProfi
                   <div className="text-gray-400">Albums</div>
                 </div>
                 <div className="bg-[#1a1a1a] rounded-2xl p-6 text-center">
-                  <div className="text-[#00ff88] text-3xl mb-2">{isFollowing ? '✓' : '0'}</div>
-                  <div className="text-gray-400">Following</div>
+                  <div className="text-[#00ff88] text-3xl mb-2">{followerCount}</div>
+                  <div className="text-gray-400">Followers</div>
                 </div>
               </div>
 
-              {/* Social Links */}
-              <div className="bg-[#1a1a1a] rounded-2xl p-8">
-                <h3 className="text-white text-xl mb-4">Connect</h3>
-                <div className="flex gap-4">
-                  <Button className="flex-1 bg-[#1a1a1a] border-2 border-[#2a2a2a] hover:border-[#00ff88] text-white">
-                    Instagram
-                  </Button>
-                  <Button className="flex-1 bg-[#1a1a1a] border-2 border-[#2a2a2a] hover:border-[#00ff88] text-white">
-                    Twitter
-                  </Button>
-                  <Button className="flex-1 bg-[#1a1a1a] border-2 border-[#2a2a2a] hover:border-[#00ff88] text-white">
-                    Website
-                  </Button>
-                </div>
-              </div>
             </div>
           </TabsContent>
         </Tabs>
+        <div className="pb-32"></div>
       </div>
     </div>
   );

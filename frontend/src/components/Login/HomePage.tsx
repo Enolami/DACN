@@ -9,6 +9,7 @@ import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { motion } from 'framer-motion';
 import { getSongs, getLikedSongs, getRecommendations, followArtist, unfollowArtist, getFollowedArtists } from '../../services/api';
+import { generateDefaultAvatar } from '../../utils/avatarUtils';
 import type { Song, Artist, Album, Recommendation, Follower } from '../../types/music';
 
 interface HomePageProps {
@@ -150,7 +151,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
   return (
     <ScrollArea className="flex-1 h-full bg-black">
-      <div className="p-6 md:p-8">
+      <div className="p-6 md:p-8 pb-32">
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="bg-transparent border-b border-[#1a1a1a] rounded-none p-0 h-auto gap-8 mb-8">
             <TabsTrigger
@@ -262,7 +263,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       >
                         <ArtistCard
                           name={artist.stage_name}
-                          imageUrl={`https://api.dicebear.com/7.x/avataaars/svg?seed=${artist.stage_name}`}
+                          imageUrl={artist.image_url || generateDefaultAvatar(artist.stage_name)}
                           genre={isFollowed ? 'Following' : (artist.verified ? 'Verified' : 'Artist')}
                         />
                       </div>
@@ -404,7 +405,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     >
                       <ArtistCard
                         name={artist.stage_name}
-                        imageUrl={`https://api.dicebear.com/7.x/avataaars/svg?seed=${artist.stage_name}`}
+                        imageUrl={artist.image_url || generateDefaultAvatar(artist.stage_name)}
                         genre={artist.verified ? 'Verified' : 'Artist'}
                       />
                     </div>

@@ -6,7 +6,9 @@ import type {
   RecommendationsResponse,
   LikedSong,
   Follower,
-  JamendoSearchResponse
+  JamendoSearchResponse,
+  Playlist,
+  PlaylistSong
 } from '../types/music';
 
 const API_URL = 'http://localhost:8000';
@@ -342,6 +344,7 @@ export interface ProfileData {
   username: string; // User.username
   avatar_url?: string;
   bio?: string;
+  is_private?: boolean;
   join_date?: string;
   created_at?: string;
   updated_at?: string;
@@ -393,13 +396,17 @@ export const getProfile = async (): Promise<ProfileData> => {
   return data;
 };
 
-export const updateProfile = async (first_name?: string, bio?: string): Promise<ProfileData> => {
+export const updateProfile = async (first_name?: string, bio?: string, is_private?: boolean): Promise<ProfileData> => {
   const body: any = {};
   if (first_name !== undefined) body.first_name = first_name;
   if (bio !== undefined) body.bio = bio;
+  if (is_private !== undefined) body.is_private = is_private;
 
   const response = await apiFetch('/accounts/api/profile/', {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(body),
   });
 
@@ -515,6 +522,56 @@ export const removeAvatar = async (): Promise<ProfileData> => {
 
   if (!response.ok) {
     throw new Error(data.error || 'Failed to remove avatar');
+  }
+
+  return data;
+};
+
+/**
+ * Change user password
+ */
+export const changePassword = async (oldPassword: string, newPassword: string, confirmPassword: string): Promise<{ message: string; access?: string; refresh?: string; requires_otp?: boolean; email?: string }> => {
+  const response = await apiFetch('/accounts/api/change-password/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      old_password: oldPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to change password');
+  }
+
+  return data;
+};
+
+/**
+ * Verify OTP for password change (for OAuth users)
+ */
+export const verifyPasswordOTP = async (code: string, newPassword: string, confirmPassword: string): Promise<{ message: string; access: string; refresh: string }> => {
+  const response = await apiFetch('/accounts/api/verify-password-otp/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      code: code,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to verify OTP');
   }
 
   return data;
@@ -672,6 +729,20 @@ export const getFollowedArtists = async (): Promise<Follower[]> => {
 };
 
 /**
+ * Get the total number of followers for an artist
+ */
+export const getArtistFollowerCount = async (artistId: string): Promise<{ artist_id: string; artist_name: string; follower_count: number }> => {
+  const response = await apiFetch(`/music/artists/${artistId}/followers/count/`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || data.detail || 'Failed to fetch follower count');
+  }
+
+  return data;
+};
+
+/**
  * Search for tracks on Jamendo
  * @param query - Search query (track name)
  */
@@ -764,4 +835,249 @@ export const isSongLiked = (songId: string, likedSongs: LikedSong[]): boolean =>
  */
 export const isArtistFollowed = (artistId: string, followedArtists: Follower[]): boolean => {
   return followedArtists.some(fa => fa.artist_id === artistId);
+};
+
+// --- Playlist Management API ---
+
+/**
+ * Get all playlists (user's playlists and public playlists)
+ */
+export const getPlaylists = async (): Promise<Playlist[]> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to fetch playlists');
+  }
+
+  return data;
+};
+
+/**
+ * Get a single playlist by ID
+ */
+export const getPlaylist = async (playlistId: string): Promise<Playlist> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to fetch playlist');
+  }
+
+  return data;
+};
+
+/**
+ * Create a new playlist
+ */
+export const createPlaylist = async (title: string, isPublic: boolean = false): Promise<Playlist> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title,
+      is_public: isPublic,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to create playlist');
+  }
+
+  return data;
+};
+
+/**
+ * Update a playlist
+ */
+export const updatePlaylist = async (playlistId: string, title?: string, isPublic?: boolean): Promise<Playlist> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const body: any = {};
+  if (title !== undefined) body.title = title;
+  if (isPublic !== undefined) body.is_public = isPublic;
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to update playlist');
+  }
+
+  return data;
+};
+
+/**
+ * Delete a playlist
+ */
+export const deletePlaylist = async (playlistId: string): Promise<void> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.detail || data.error || 'Failed to delete playlist');
+  }
+};
+
+/**
+ * Get all songs in a playlist
+ */
+export const getPlaylistSongs = async (playlistId: string): Promise<PlaylistSong[]> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/songs/`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to fetch playlist songs');
+  }
+
+  return data;
+};
+
+/**
+ * Add a song to a playlist
+ */
+export const addSongToPlaylist = async (playlistId: string, songId: string): Promise<Playlist> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/songs/${songId}/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to add song to playlist');
+  }
+
+  return data;
+};
+
+/**
+ * Remove a song from a playlist
+ */
+export const removeSongFromPlaylist = async (playlistId: string, songId: string): Promise<Playlist> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/songs/${songId}/remove/`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to remove song from playlist');
+  }
+
+  return data;
+};
+
+/**
+ * Reorder songs in a playlist
+ */
+export const reorderPlaylistSongs = async (playlistId: string, songIds: string[]): Promise<Playlist> => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_URL}/music/playlists/${playlistId}/reorder/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      song_ids: songIds,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || 'Failed to reorder playlist songs');
+  }
+
+  return data;
 };

@@ -347,7 +347,7 @@ export function AlbumDetail({ album: initialAlbum, onNavigate }: AlbumDetailProp
 
       {/* More Albums Section - Show other albums by same artist */}
       {artistId && (
-        <div className="max-w-[1400px] mx-auto px-20 pb-20">
+        <div className="max-w-[1400px] mx-auto px-20 pb-32">
           <h2 className="text-white text-3xl mb-6">More from {artistName}</h2>
           {/* This would require fetching other albums by the artist */}
           {/* For now, we'll leave it empty or show a placeholder */}

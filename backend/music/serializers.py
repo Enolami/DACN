@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Song, LikedSong, Follower, Artist, Album
+from .models import Song, LikedSong, Follower, Artist, Album, Playlist, PlaylistSong
 
 
 class ArtistSerializer(serializers.ModelSerializer):
@@ -12,6 +12,8 @@ class ArtistSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "stage_name",
+            "image_url",
+            "jamendo_artist_id",
             "verified",
             "created_at",
             "updated_at",
@@ -205,3 +207,93 @@ class FollowerSerializer(serializers.ModelSerializer):
             "followed_at",
         ]
         read_only_fields = ["followed_at"]
+
+
+class PlaylistSongSerializer(serializers.ModelSerializer):
+    """
+    Serializer for PlaylistSong join table with nested song data.
+    """
+    song = SongSerializer(read_only=True)
+    song_id = serializers.UUIDField(source="song.id", read_only=True)
+    position = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PlaylistSong
+        fields = [
+            "id",
+            "song",
+            "song_id",
+            "added_at",
+            "position",
+        ]
+        read_only_fields = ["added_at"]
+    
+    def get_position(self, obj):
+        """Get the position of the song in the playlist."""
+        # Get all playlist songs ordered by added_at
+        playlist_songs = PlaylistSong.objects.filter(
+            playlist=obj.playlist
+        ).order_by('added_at')
+        positions = {ps.id: idx + 1 for idx, ps in enumerate(playlist_songs)}
+        return positions.get(obj.id, 0)
+
+
+class PlaylistSerializer(serializers.ModelSerializer):
+    """
+    Basic serializer for listing playlists.
+    """
+    owner_username = serializers.CharField(source="owner.username", read_only=True)
+    song_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Playlist
+        fields = [
+            "id",
+            "title",
+            "owner",
+            "owner_username",
+            "is_public",
+            "song_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["owner", "created_at", "updated_at"]
+    
+    def get_song_count(self, obj):
+        """Get the number of songs in the playlist."""
+        return obj.songs.count()
+
+
+class PlaylistDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for playlist with nested songs.
+    """
+    owner_username = serializers.CharField(source="owner.username", read_only=True)
+    songs = serializers.SerializerMethodField()
+    song_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Playlist
+        fields = [
+            "id",
+            "title",
+            "owner",
+            "owner_username",
+            "is_public",
+            "songs",
+            "song_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["owner", "created_at", "updated_at"]
+    
+    def get_songs(self, obj):
+        """Get all songs in the playlist ordered by added_at."""
+        playlist_songs = PlaylistSong.objects.filter(
+            playlist=obj
+        ).select_related('song', 'song__album', 'song__album__artist').order_by('added_at')
+        return PlaylistSongSerializer(playlist_songs, many=True).data
+    
+    def get_song_count(self, obj):
+        """Get the number of songs in the playlist."""
+        return obj.songs.count()

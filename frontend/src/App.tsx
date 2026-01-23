@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAccessToken, clearTokens, storeTokens, validateToken } from './services/api';
+import type { Song } from './types/music';
 import { LoginPage } from './components/Login/LoginPage';
 import { SignUpPage } from './components/Login/SignUpPage';
 import { OTPVerificationPage } from './components/Login/OTPVerificationPage';
@@ -46,6 +47,10 @@ function App() {
   
   // Current playing song - shared across app
   const [currentSong, setCurrentSong] = useState<any>(null);
+  
+  // Queue management
+  const [queue, setQueue] = useState<Song[]>([]);
+  const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(-1);
 
   // Auto-login on app load if a token already exists (remember me or session)
   useEffect(() => {
@@ -185,6 +190,23 @@ function App() {
       const songToPlay = data?.song || data;
       setCurrentSong(songToPlay);
       setIsPlaying(true); // Auto-play when navigating to song
+      
+      // If song is in queue, update queue index
+      const songId = songToPlay?.id;
+      if (songId) {
+        const queueIndex = queue.findIndex(s => s.id === songId);
+        if (queueIndex >= 0) {
+          setCurrentQueueIndex(queueIndex);
+        } else {
+          // Song not in queue, add it and set as current
+          setQueue(prev => {
+            const newQueue = [...prev, songToPlay];
+            setCurrentQueueIndex(newQueue.length - 1);
+            return newQueue;
+          });
+        }
+      }
+      
       setCurrentView('song');
       setCurrentPage('song');
     } else if (page === 'profile') {
@@ -368,6 +390,119 @@ function App() {
     }
   };
 
+  // Handle play song callback
+  const handlePlaySong = (song: Song) => {
+    setCurrentSong(song);
+    setIsPlaying(true);
+    
+    // If song is in queue, update queue index
+    const songId = song?.id;
+    if (songId) {
+      const queueIndex = queue.findIndex(s => s.id === songId);
+      if (queueIndex >= 0) {
+        setCurrentQueueIndex(queueIndex);
+      } else {
+        // Song not in queue, add it and set as current
+        setQueue(prev => {
+          const newQueue = [...prev, song];
+          setCurrentQueueIndex(newQueue.length - 1);
+          return newQueue;
+        });
+      }
+    }
+  };
+
+  // Queue management functions
+  const addToQueue = (song: Song, playNext: boolean = false) => {
+    setQueue(prev => {
+      // Check if song already in queue
+      if (prev.some(s => s.id === song.id)) {
+        return prev; // Already in queue
+      }
+      
+      if (playNext && currentQueueIndex >= 0) {
+        // Insert after current song
+        const newQueue = [...prev];
+        newQueue.splice(currentQueueIndex + 1, 0, song);
+        return newQueue;
+      } else {
+        // Add to end
+        return [...prev, song];
+      }
+    });
+  };
+
+  const removeFromQueue = (songId: string) => {
+    setQueue(prev => {
+      const newQueue = prev.filter(s => s.id !== songId);
+      const removedIndex = prev.findIndex(s => s.id === songId);
+      
+      // Adjust current index if needed
+      if (removedIndex >= 0) {
+        if (removedIndex < currentQueueIndex) {
+          setCurrentQueueIndex(prev => prev - 1);
+        } else if (removedIndex === currentQueueIndex) {
+          // If we removed the current song, move to next or previous
+          if (newQueue.length > 0) {
+            const nextIndex = Math.min(currentQueueIndex, newQueue.length - 1);
+            setCurrentQueueIndex(nextIndex);
+            if (nextIndex >= 0 && nextIndex < newQueue.length) {
+              setCurrentSong(newQueue[nextIndex]);
+              setIsPlaying(true);
+            }
+          } else {
+            setCurrentQueueIndex(-1);
+            setCurrentSong(null);
+            setIsPlaying(false);
+          }
+        }
+      }
+      
+      return newQueue;
+    });
+  };
+
+  const clearQueue = () => {
+    setQueue([]);
+    setCurrentQueueIndex(-1);
+    // Don't stop current song, just clear queue
+  };
+
+  const reorderQueue = (fromIndex: number, toIndex: number) => {
+    setQueue(prev => {
+      const newQueue = [...prev];
+      const [removed] = newQueue.splice(fromIndex, 1);
+      newQueue.splice(toIndex, 0, removed);
+      
+      // Update current index if needed
+      if (currentQueueIndex === fromIndex) {
+        setCurrentQueueIndex(toIndex);
+      } else if (currentQueueIndex > fromIndex && currentQueueIndex <= toIndex) {
+        setCurrentQueueIndex(prev => prev - 1);
+      } else if (currentQueueIndex < fromIndex && currentQueueIndex >= toIndex) {
+        setCurrentQueueIndex(prev => prev + 1);
+      }
+      
+      return newQueue;
+    });
+  };
+
+  // Auto-play next song when current song ends
+  const handleSongEnd = () => {
+    if (currentQueueIndex >= 0 && currentQueueIndex < queue.length - 1) {
+      const nextIndex = currentQueueIndex + 1;
+      const nextSong = queue[nextIndex];
+      if (nextSong) {
+        setCurrentQueueIndex(nextIndex);
+        setCurrentSong(nextSong);
+        setIsPlaying(true);
+      }
+    } else {
+      // Queue ended or no next song
+      setIsPlaying(false);
+    }
+  };
+
   const renderView = () => {
     switch (currentView) {
       case 'login':
@@ -465,7 +600,20 @@ function App() {
                 />
                 {renderContent()}
               </div>
-              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+              <RightPanel 
+                onNavigate={handleNavigate} 
+                currentSong={currentSong}
+                queue={queue}
+                currentQueueIndex={currentQueueIndex}
+                onRemoveFromQueue={removeFromQueue}
+                onClearQueue={clearQueue}
+                onReorderQueue={reorderQueue}
+                onPlayFromQueue={(song, index) => {
+                  setCurrentSong(song);
+                  setCurrentQueueIndex(index);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -473,6 +621,7 @@ function App() {
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
+              onSongEnd={handleSongEnd}
             />
           </div>
         );
@@ -500,7 +649,20 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+              <RightPanel 
+                onNavigate={handleNavigate} 
+                currentSong={currentSong}
+                queue={queue}
+                currentQueueIndex={currentQueueIndex}
+                onRemoveFromQueue={removeFromQueue}
+                onClearQueue={clearQueue}
+                onReorderQueue={reorderQueue}
+                onPlayFromQueue={(song, index) => {
+                  setCurrentSong(song);
+                  setCurrentQueueIndex(index);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -508,6 +670,7 @@ function App() {
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
+              onSongEnd={handleSongEnd}
             />
           </div>
         );
@@ -531,9 +694,23 @@ function App() {
                 <ProfilePage 
                   onNavigate={handleNavigate}
                   onLogout={handleLogout}
+                  onPlaySong={handlePlaySong}
                 />
               </div>
-              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+              <RightPanel 
+                onNavigate={handleNavigate} 
+                currentSong={currentSong}
+                queue={queue}
+                currentQueueIndex={currentQueueIndex}
+                onRemoveFromQueue={removeFromQueue}
+                onClearQueue={clearQueue}
+                onReorderQueue={reorderQueue}
+                onPlayFromQueue={(song, index) => {
+                  setCurrentSong(song);
+                  setCurrentQueueIndex(index);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -541,6 +718,7 @@ function App() {
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
+              onSongEnd={handleSongEnd}
             />
           </div>
         );
@@ -568,7 +746,20 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+              <RightPanel 
+                onNavigate={handleNavigate} 
+                currentSong={currentSong}
+                queue={queue}
+                currentQueueIndex={currentQueueIndex}
+                onRemoveFromQueue={removeFromQueue}
+                onClearQueue={clearQueue}
+                onReorderQueue={reorderQueue}
+                onPlayFromQueue={(song, index) => {
+                  setCurrentSong(song);
+                  setCurrentQueueIndex(index);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -576,6 +767,7 @@ function App() {
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
+              onSongEnd={handleSongEnd}
             />
           </div>
         );
@@ -611,7 +803,20 @@ function App() {
                   />
                 )}
               </div>
-              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+              <RightPanel 
+                onNavigate={handleNavigate} 
+                currentSong={currentSong}
+                queue={queue}
+                currentQueueIndex={currentQueueIndex}
+                onRemoveFromQueue={removeFromQueue}
+                onClearQueue={clearQueue}
+                onReorderQueue={reorderQueue}
+                onPlayFromQueue={(song, index) => {
+                  setCurrentSong(song);
+                  setCurrentQueueIndex(index);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -619,6 +824,7 @@ function App() {
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
+              onSongEnd={handleSongEnd}
             />
           </div>
         );
@@ -641,7 +847,20 @@ function App() {
                 />
                 <SearchPage onNavigate={handleNavigate} />
               </div>
-              <RightPanel onNavigate={handleNavigate} currentSong={currentSong} />
+              <RightPanel 
+                onNavigate={handleNavigate} 
+                currentSong={currentSong}
+                queue={queue}
+                currentQueueIndex={currentQueueIndex}
+                onRemoveFromQueue={removeFromQueue}
+                onClearQueue={clearQueue}
+                onReorderQueue={reorderQueue}
+                onPlayFromQueue={(song, index) => {
+                  setCurrentSong(song);
+                  setCurrentQueueIndex(index);
+                  setIsPlaying(true);
+                }}
+              />
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
@@ -649,6 +868,7 @@ function App() {
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}
+              onSongEnd={handleSongEnd}
             />
           </div>
         );

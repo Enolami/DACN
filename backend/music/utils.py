@@ -143,39 +143,53 @@ def upload_album_cover(image_url: str, album_id: str) -> Optional[dict]:
         return None
 
 
-def get_or_create_jamendo_artist_user(artist_name: str, jamendo_artist_id: str = None):
+def get_or_create_jamendo_artist(artist_name: str, jamendo_artist_id: str = None, artist_image_url: str = None):
     """
-    Get or create a system User for Jamendo artists.
-    Since Artist model requires a User, we create a placeholder user for Jamendo imports.
+    Get or create an Artist for Jamendo imports.
+    No longer requires a User - artists are standalone entities.
     
     Args:
         artist_name (str): Name of the artist.
         jamendo_artist_id (str, optional): Jamendo artist ID for uniqueness.
+        artist_image_url (str, optional): Artist image URL from Jamendo.
         
     Returns:
-        User: The user object for the artist.
+        Artist: The artist object.
     """
-    from user.models import User
+    from .models import Artist
     
-    # Create a unique username for Jamendo artists
+    # Create or get artist by jamendo_artist_id if available, otherwise by name
     if jamendo_artist_id:
-        username = f"jamendo_artist_{jamendo_artist_id}"
+        artist, created = Artist.objects.get_or_create(
+            jamendo_artist_id=jamendo_artist_id,
+            defaults={
+                'stage_name': artist_name,
+                'image_url': artist_image_url or '',
+            }
+        )
     else:
-        # Use sanitized artist name
-        safe_name = "".join(c for c in artist_name if c.isalnum() or c in ('_', '-')).lower()[:50]
-        username = f"jamendo_artist_{safe_name}"
+        # Fallback: get by name (less reliable, but works if no jamendo_id)
+        artist, created = Artist.objects.get_or_create(
+            stage_name=artist_name,
+            jamendo_artist_id__isnull=True,
+            defaults={
+                'image_url': artist_image_url or '',
+            }
+        )
     
-    # Try to get existing user
-    user, created = User.objects.get_or_create(
-        username=username,
-        defaults={
-            'email': f"{username}@jamendo.local",  # Placeholder email
-            'is_artist': True,
-            'is_active': True,
-        }
-    )
+    # Update fields if artist already existed
+    if not created:
+        updated = False
+        if artist.stage_name != artist_name:
+            artist.stage_name = artist_name
+            updated = True
+        if artist_image_url and not artist.image_url:
+            artist.image_url = artist_image_url
+            updated = True
+        if updated:
+            artist.save()
     
-    return user
+    return artist
 
 
 def calculate_similarity(song_id, top_n=5, min_similarity=0.0):

@@ -1,5 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import StreamingHttpResponse, Http404, HttpResponse
+from django.db import models
+from django.db.models import Q
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,9 +12,12 @@ import os
 import requests
 import re
 
-from .models import Song, Artist, Album, LikedSong, Follower
-from .serializers import SongSerializer, SongDetailSerializer, LikedSongSerializer, FollowerSerializer
-from .utils import process_track_mfcc, upload_album_cover, get_or_create_jamendo_artist_user, calculate_similarity, extract_duration
+from .models import Song, Artist, Album, LikedSong, Follower, Playlist, PlaylistSong
+from .serializers import (
+    SongSerializer, SongDetailSerializer, LikedSongSerializer, FollowerSerializer,
+    PlaylistSerializer, PlaylistDetailSerializer, PlaylistSongSerializer
+)
+from .utils import process_track_mfcc, upload_album_cover, get_or_create_jamendo_artist, calculate_similarity, extract_duration
 from datetime import datetime
 
 
@@ -266,18 +271,36 @@ class JamendoImportView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # 2. Create or get Artist
-            artist_user = get_or_create_jamendo_artist_user(artist_name, jamendo_artist_id)
-            artist, artist_created = Artist.objects.get_or_create(
-                user=artist_user,
-                defaults={"stage_name": artist_name}
-            )
-            # Update stage_name if it changed
-            if not artist_created and artist.stage_name != artist_name:
-                artist.stage_name = artist_name
-                artist.save()
+            # 2. Fetch artist image from Jamendo if artist_id is available
+            artist_image_url = None
+            if jamendo_artist_id:
+                try:
+                    # Fetch artist details to get image URL
+                    artist_url = "https://api.jamendo.com/v3.0/artists/"
+                    artist_params = {
+                        "client_id": settings.JAMENDO_CLIENT_ID,
+                        "format": "json",
+                        "id": jamendo_artist_id,
+                    }
+                    artist_resp = requests.get(artist_url, params=artist_params, timeout=10)
+                    if artist_resp.status_code == 200:
+                        artist_results = artist_resp.json().get("results", [])
+                        if artist_results:
+                            # Jamendo API returns artist image in various fields, try common ones
+                            artist_image_url = (
+                                artist_results[0].get("image") or 
+                                artist_results[0].get("artistimage") or
+                                artist_results[0].get("image_url") or
+                                None
+                            )
+                except Exception as e:
+                    # If artist fetch fails, continue without image
+                    print(f"Warning: Could not fetch artist image for {jamendo_artist_id}: {e}")
 
-            # 3. Create or get Album
+            # 3. Create or get Artist (no longer requires User)
+            artist = get_or_create_jamendo_artist(artist_name, jamendo_artist_id, artist_image_url)
+
+            # 4. Create or get Album
             # Parse release date if available
             release_date = None
             if release_date_str:
@@ -293,7 +316,7 @@ class JamendoImportView(APIView):
                 defaults={"release_date": release_date}
             )
 
-            # 4. Upload cover art to Cloudinary if available
+            # 5. Upload cover art to Cloudinary if available
             # Upload if album was just created OR if existing album doesn't have a cover
             if cover_url and (album_created or not album.cover_pic_url):
                 cover_result = upload_album_cover(cover_url, str(album.id))
@@ -302,11 +325,11 @@ class JamendoImportView(APIView):
                     album.cover_pic_id = cover_result['public_id']
                     album.save(update_fields=['cover_pic_url', 'cover_pic_id'])
 
-            # 5. Download audio content
+            # 6. Download audio content
             audio_response = requests.get(audio_url, timeout=30)
             audio_response.raise_for_status()
 
-            # 6. Check if song already exists (prevent duplicates by jamendo_id)
+            # 7. Check if song already exists (prevent duplicates by jamendo_id)
             existing_song = Song.objects.filter(jamendo_id=jamendo_id).first()
             
             if existing_song:
@@ -320,7 +343,7 @@ class JamendoImportView(APIView):
                     status=status.HTTP_200_OK
                 )
 
-            # 7. Create Song object
+            # 8. Create Song object
             filename = f"jamendo_{jamendo_id}.mp3"
             song = Song(
                 title=title,
@@ -333,7 +356,7 @@ class JamendoImportView(APIView):
             song.audio_file_url = song.audio_file.url
             song.save()
 
-            # 8. Automatically trigger MFCC analysis
+            # 9. Automatically trigger MFCC analysis
             # Note: Signal handler will also process, but we do it here for immediate feedback
             try:
                 file_path = song.audio_file.path
@@ -602,3 +625,224 @@ class UserFollowedArtistsView(APIView):
         followed_artists = Follower.objects.filter(user=request.user).select_related('artist')
         serializer = FollowerSerializer(followed_artists, many=True)
         return Response(serializer.data)
+
+
+class ArtistFollowerCountView(APIView):
+    """
+    Get the total number of followers for an artist.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk, format=None):
+        artist = get_object_or_404(Artist, pk=pk)
+        follower_count = Follower.objects.filter(artist=artist).count()
+        return Response({
+            "artist_id": str(artist.id),
+            "artist_name": artist.stage_name,
+            "follower_count": follower_count
+        })
+
+
+# --- Playlist Management ---
+
+
+class PlaylistListCreateView(generics.ListCreateAPIView):
+    """
+    List all playlists or create a new playlist.
+    Users can only see their own playlists and public playlists.
+    """
+    serializer_class = PlaylistSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return playlists owned by the user or public playlists."""
+        user = self.request.user
+        return Playlist.objects.filter(
+            Q(owner=user) | Q(is_public=True)
+        ).select_related('owner').prefetch_related('songs').order_by('-created_at')
+    
+    def perform_create(self, serializer):
+        """Set the owner to the current user."""
+        serializer.save(owner=self.request.user)
+
+
+class PlaylistDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update, or delete a playlist.
+    Only the owner can update or delete.
+    """
+    serializer_class = PlaylistDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return playlists owned by the user or public playlists."""
+        user = self.request.user
+        return Playlist.objects.filter(
+            Q(owner=user) | Q(is_public=True)
+        ).select_related('owner').prefetch_related('songs')
+    
+    def get_serializer_class(self):
+        """Use detail serializer for GET, basic for PUT/PATCH."""
+        if self.request.method == 'GET':
+            return PlaylistDetailSerializer
+        return PlaylistSerializer
+    
+    def update(self, request, *args, **kwargs):
+        """Only allow owner to update."""
+        playlist = self.get_object()
+        if playlist.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to edit this playlist."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Only allow owner to delete."""
+        playlist = self.get_object()
+        if playlist.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to delete this playlist."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+class AddSongToPlaylistView(APIView):
+    """
+    Add a song to a playlist.
+    Prevents duplicate songs in the same playlist.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, pk, song_id):
+        """Add a song to the playlist."""
+        playlist = get_object_or_404(Playlist, pk=pk)
+        
+        # Check if user owns the playlist
+        if playlist.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to modify this playlist."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        song = get_object_or_404(Song, pk=song_id)
+        
+        # Check if song already exists in playlist
+        if PlaylistSong.objects.filter(playlist=playlist, song=song).exists():
+            return Response(
+                {"detail": "Song is already in this playlist."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Add song to playlist
+        PlaylistSong.objects.create(playlist=playlist, song=song)
+        
+        # Return updated playlist
+        serializer = PlaylistDetailSerializer(playlist)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class RemoveSongFromPlaylistView(APIView):
+    """
+    Remove a song from a playlist.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def delete(self, request, pk, song_id):
+        """Remove a song from the playlist."""
+        playlist = get_object_or_404(Playlist, pk=pk)
+        
+        # Check if user owns the playlist
+        if playlist.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to modify this playlist."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        song = get_object_or_404(Song, pk=song_id)
+        playlist_song = get_object_or_404(PlaylistSong, playlist=playlist, song=song)
+        
+        playlist_song.delete()
+        
+        # Return updated playlist
+        serializer = PlaylistDetailSerializer(playlist)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PlaylistSongsView(APIView):
+    """
+    List all songs in a playlist.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, pk):
+        """Get all songs in the playlist."""
+        playlist = get_object_or_404(Playlist, pk=pk)
+        
+        # Check if user can view this playlist
+        if playlist.owner != request.user and not playlist.is_public:
+            return Response(
+                {"detail": "You do not have permission to view this playlist."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        playlist_songs = PlaylistSong.objects.filter(
+            playlist=playlist
+        ).select_related('song', 'song__album', 'song__album__artist').order_by('added_at')
+        
+        serializer = PlaylistSongSerializer(playlist_songs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ReorderPlaylistSongsView(APIView):
+    """
+    Reorder songs in a playlist by updating their added_at timestamps.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, pk):
+        """Reorder songs in the playlist."""
+        playlist = get_object_or_404(Playlist, pk=pk)
+        
+        # Check if user owns the playlist
+        if playlist.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to modify this playlist."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Expected format: {"song_ids": ["uuid1", "uuid2", ...]}
+        song_ids = request.data.get('song_ids', [])
+        
+        if not isinstance(song_ids, list) or len(song_ids) == 0:
+            return Response(
+                {"detail": "song_ids must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verify all songs belong to this playlist
+        playlist_songs = PlaylistSong.objects.filter(playlist=playlist)
+        existing_song_ids = set(playlist_songs.values_list('song_id', flat=True))
+        provided_song_ids = set(song_ids)
+        
+        if existing_song_ids != provided_song_ids:
+            return Response(
+                {"detail": "Song IDs do not match the playlist's songs."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update added_at timestamps based on new order
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        base_time = timezone.now()
+        for index, song_id in enumerate(song_ids):
+            PlaylistSong.objects.filter(
+                playlist=playlist,
+                song_id=song_id
+            ).update(added_at=base_time + timedelta(seconds=index))
+        
+        # Return updated playlist
+        serializer = PlaylistDetailSerializer(playlist)
+        return Response(serializer.data, status=status.HTTP_200_OK)

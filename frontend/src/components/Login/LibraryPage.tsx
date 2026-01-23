@@ -12,9 +12,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
-import { getSongs, formatDuration, getLikedSongs, getFollowedArtists } from '../../services/api';
+import { getSongs, formatDuration, getLikedSongs, getFollowedArtists, getPlaylists, createPlaylist } from '../../services/api';
 import { TrackTable } from './TrackTable';
-import type { Song, Artist, Album, LikedSong, Follower } from '../../types/music';
+import { CreatePlaylistDialog } from './CreatePlaylistDialog';
+import type { Song, Artist, Album, LikedSong, Follower, Playlist } from '../../types/music';
 
 interface LibraryPageProps {
   onNavigate: (page: string, data?: any) => void;
@@ -25,6 +26,7 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
   const [songs, setSongs] = useState<Song[]>([]);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
   const [followedArtists, setFollowedArtists] = useState<Follower[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,18 +36,23 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
   const [songsFilter, setSongsFilter] = useState('All');
   const [generalSortBy, setGeneralSortBy] = useState('Recently Added');
   const [generalFilter, setGeneralFilter] = useState('All');
+  const [isCreatePlaylistDialogOpen, setIsCreatePlaylistDialogOpen] = useState(false);
 
   // Fetch songs on component mount or when category changes
   useEffect(() => {
     const fetchData = async () => {
-      if (category === 'playlists') {
-        setLoading(false);
-        return; // Playlists are user-created, no API call needed yet
-      }
-
       try {
         setLoading(true);
         setError(null);
+        
+        if (category === 'playlists') {
+          // Fetch playlists
+          const fetchedPlaylists = await getPlaylists();
+          setPlaylists(fetchedPlaylists);
+          setLoading(false);
+          return;
+        }
+
         const fetchedSongs = await getSongs();
         setSongs(fetchedSongs);
 
@@ -94,8 +101,11 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
     fetchData();
   }, [category]);
 
-  // Playlists will be fetched from API in the future
-  const playlists: any[] = [];
+  // Handle create playlist
+  const handleCreatePlaylist = async (title: string, isPublic: boolean) => {
+    const newPlaylist = await createPlaylist(title, isPublic);
+    setPlaylists(prev => [newPlaylist, ...prev]);
+  };
 
   // Helper function to get song count for an artist
   const getArtistSongCount = (artistId: string): number => {
@@ -165,47 +175,71 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
     switch (category) {
       case 'playlists':
         return (
-          <div className="grid grid-cols-5 gap-6">
-            {/* Create Playlist Card */}
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-br from-[#00ff88]/20 to-[#00cc6e]/20 border-2 border-dashed border-[#00ff88] rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center aspect-square"
-            >
-              <div className="w-16 h-16 bg-[#00ff88] rounded-full flex items-center justify-center mb-4">
-                <Plus className="w-8 h-8 text-black" />
-              </div>
-              <h3 className="text-white">Create Playlist</h3>
-            </motion.div>
-
-            {/* Playlist Cards */}
-            {playlists.map((playlist, index) => (
+          <>
+            <div className="grid grid-cols-5 gap-6">
+              {/* Create Playlist Card */}
               <motion.div
-                key={index}
                 whileHover={{ scale: 1.05 }}
-                className="group cursor-pointer"
-                onClick={() => onNavigate('playlist', playlist)}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsCreatePlaylistDialogOpen(true)}
+                className="bg-gradient-to-br from-[#00ff88]/20 to-[#00cc6e]/20 border-2 border-dashed border-[#00ff88] rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center aspect-square"
               >
-                <div className="relative bg-[#1a1a1a] rounded-xl overflow-hidden mb-4 aspect-square">
-                  {playlist.imageUrl ? (
-                    <ImageWithFallback
-                      src={playlist.imageUrl}
-                      alt={playlist.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${playlist.gradient} flex items-center justify-center`}>
-                      <ListMusic className="w-16 h-16 text-white/50" />
-                    </div>
-                  )}
+                <div className="w-16 h-16 bg-[#00ff88] rounded-full flex items-center justify-center mb-4">
+                  <Plus className="w-8 h-8 text-black" />
                 </div>
-                <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate">
-                  {playlist.title}
-                </h3>
-                <p className="text-gray-400 text-sm">{playlist.songs} songs</p>
+                <h3 className="text-white">Create Playlist</h3>
               </motion.div>
-            ))}
-          </div>
+
+              {/* Playlist Cards */}
+              {playlists.map((playlist) => {
+                // Get first song's image or use default gradient
+                const imageUrl = playlist.songs && playlist.songs.length > 0 
+                  ? playlist.songs[0].song?.image_url || null
+                  : null;
+                
+                return (
+                  <motion.div
+                    key={playlist.id}
+                    whileHover={{ scale: 1.05 }}
+                    className="group cursor-pointer"
+                    onClick={() => onNavigate('playlist', { 
+                      id: playlist.id,
+                      title: playlist.title,
+                      description: `${playlist.song_count} songs`,
+                      imageUrl: imageUrl || undefined,
+                    })}
+                  >
+                    <div className="relative bg-[#1a1a1a] rounded-xl overflow-hidden mb-4 aspect-square">
+                      {imageUrl ? (
+                        <ImageWithFallback
+                          src={imageUrl}
+                          alt={playlist.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-[#00ff88]/20 to-[#a855f7]/20 flex items-center justify-center">
+                          <ListMusic className="w-16 h-16 text-white/50" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-white mb-1 group-hover:text-[#00ff88] transition-colors truncate">
+                      {playlist.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {playlist.song_count} {playlist.song_count === 1 ? 'song' : 'songs'}
+                      {playlist.is_public && ' • Public'}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+            
+            <CreatePlaylistDialog
+              isOpen={isCreatePlaylistDialogOpen}
+              onClose={() => setIsCreatePlaylistDialogOpen(false)}
+              onCreate={handleCreatePlaylist}
+            />
+          </>
         );
 
       case 'albums':
@@ -562,7 +596,7 @@ export function LibraryPage({ onNavigate, category = 'playlists' }: LibraryPageP
 
   return (
     <ScrollArea className="flex-1 h-full">
-      <div className="p-8">
+      <div className="p-8 pb-32">
         {/* Header - No gap, immediately after title */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-white text-4xl">{getCategoryTitle()}</h1>

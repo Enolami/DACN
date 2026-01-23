@@ -41,8 +41,9 @@ export interface Album {
 
 export interface Artist {
   id: string;
-  user: string; // User UUID
   stage_name: string;
+  image_url: string | null; // Artist image URL from Jamendo or other sources
+  jamendo_artist_id: string | null; // Jamendo artist ID for tracking
   verified: boolean;
   created_at: string;
   updated_at: string;
@@ -140,4 +141,24 @@ export interface AlbumCard {
   releaseDate: string | null;
   songCount: number;
   totalDuration: number; // Total duration in seconds
+}
+
+export interface PlaylistSong {
+  id: string;
+  song: Song;
+  song_id: string;
+  added_at: string;
+  position: number;
+}
+
+export interface Playlist {
+  id: string;
+  title: string;
+  owner: string; // User UUID
+  owner_username: string;
+  is_public: boolean;
+  song_count: number;
+  songs?: PlaylistSong[]; // Only in detail view
+  created_at: string;
+  updated_at: string;
 }

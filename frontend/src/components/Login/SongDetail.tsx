@@ -1,19 +1,19 @@
 import { ImageWithFallback } from './img/ImageWithFallback';
-import { Heart, Download, Share2, Plus, Play, ChevronDown, Music2, Loader2, Sparkles } from 'lucide-react';
+import { Heart, Download, Share2, Plus, Play, ChevronDown, Loader2, Sparkles, MoreHorizontal } from 'lucide-react';
 import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { motion } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from './ui/collapsible';
-import { getSong, getRecommendations, likeSong, unlikeSong, getLikedSongs, formatDuration } from '../../services/api';
+import { getSong, getRecommendations, likeSong, unlikeSong, getLikedSongs, formatDuration, getPlaylists, addSongToPlaylist } from '../../services/api';
 import { SongCard } from './SongCard';
-import type { Song, Recommendation } from '../../types/music';
+import { AddToPlaylistDialog } from './AddToPlaylistDialog';
+import type { Song, Recommendation, Playlist } from '../../types/music';
 
 interface SongDetailProps {
   song?: Song | {
@@ -61,9 +61,10 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
   const [loading, setLoading] = useState(true);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentLyricIndex, setCurrentLyricIndex] = useState(0);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isAddToPlaylistDialogOpen, setIsAddToPlaylistDialogOpen] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
   // Fetch song details on mount
   useEffect(() => {
@@ -146,69 +147,6 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
     }
   };
 
-  // Mock lyrics data (would come from API in future)
-  const lyrics = [
-    { time: 0, text: "Lost in the neon glow" },
-    { time: 3, text: "Dancing through the night" },
-    { time: 6, text: "Feeling the rhythm flow" },
-    { time: 9, text: "Everything feels so right" },
-    { time: 12, text: "Synthwave dreams collide" },
-    { time: 15, text: "With electric hearts tonight" },
-    { time: 18, text: "We're alive, we're free" },
-    { time: 21, text: "Lost in this melody" },
-  ];
-
-  // Simulate lyric progression
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentLyricIndex((prev) => (prev + 1) % lyrics.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Visualizer animation
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    let animationId: number;
-    let time = 0;
-
-    const animate = () => {
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const bars = 64;
-      const barWidth = canvas.width / bars;
-
-      for (let i = 0; i < bars; i++) {
-        const height = Math.sin(time + i * 0.5) * 100 + Math.random() * 50;
-        const x = i * barWidth;
-        const y = canvas.height / 2 - height / 2;
-
-        const gradient = ctx.createLinearGradient(x, y, x, y + height);
-        gradient.addColorStop(0, '#00ff88');
-        gradient.addColorStop(0.5, '#a855f7');
-        gradient.addColorStop(1, '#00ff88');
-
-        ctx.fillStyle = gradient;
-        ctx.fillRect(x, y, barWidth - 2, height);
-      }
-
-      time += 0.05;
-      animationId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => cancelAnimationFrame(animationId);
-  }, []);
 
   if (loading) {
     return (
@@ -250,7 +188,7 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
 
   return (
     <ScrollArea className="flex-1 h-full">
-      <div className="max-w-4xl mx-auto p-8">
+      <div className="max-w-4xl mx-auto p-8 pb-32">
         {/* Header with Artwork */}
         <div className="text-center mb-8">
           <motion.div
@@ -312,6 +250,68 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
           {/* Primary Actions */}
           <div className="flex items-center justify-center gap-3 mb-8">
             <Button
+              onClick={() => {
+                if (onPlaySong && song) {
+                  onPlaySong(song);
+                } else if (onNavigate && song) {
+                  onNavigate('song', { song });
+                }
+              }}
+              className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-black gap-2 px-8 py-6 rounded-full font-semibold shadow-lg shadow-[#00ff88]/30"
+            >
+              <Play className="w-5 h-5 fill-black" />
+              Play Now
+            </Button>
+            <Button
+              onClick={handleLikeToggle}
+              className={`border-2 gap-2 px-6 py-6 rounded-full ${
+                isLiked
+                  ? 'bg-[#ec4899] border-[#ec4899] text-white hover:bg-[#ec4899]/80'
+                  : 'bg-transparent border-white text-white hover:bg-white/10'
+              }`}
+            >
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-white' : ''}`} />
+              {isLiked ? 'Liked' : 'Like'}
+            </Button>
+            <Button
+              onClick={async () => {
+                setIsLoadingPlaylists(true);
+                try {
+                  const fetchedPlaylists = await getPlaylists();
+                  setPlaylists(fetchedPlaylists);
+                  setIsAddToPlaylistDialogOpen(true);
+                } catch (err) {
+                  console.error('Error fetching playlists:', err);
+                  alert('Failed to load playlists');
+                } finally {
+                  setIsLoadingPlaylists(false);
+                }
+              }}
+              disabled={isLoadingPlaylists}
+              className="bg-transparent border-2 border-[#a855f7] text-[#a855f7] hover:bg-[#a855f7]/10 gap-2 px-6 py-6 rounded-full"
+            >
+              <Plus className="w-5 h-5" />
+              Add to Playlist
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-14 h-14 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+            >
+              <Share2 className="w-6 h-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-14 h-14 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+            >
+              <MoreHorizontal className="w-6 h-6" />
+            </Button>
+          </div>
+
+          {/* Secondary Actions */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <Button
               size="icon"
               variant="ghost"
               onClick={handleLikeToggle}
@@ -336,7 +336,22 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
             <Button
               size="icon"
               variant="ghost"
+              onClick={async () => {
+                setIsLoadingPlaylists(true);
+                try {
+                  const fetchedPlaylists = await getPlaylists();
+                  setPlaylists(fetchedPlaylists);
+                  setIsAddToPlaylistDialogOpen(true);
+                } catch (err) {
+                  console.error('Error fetching playlists:', err);
+                  alert('Failed to load playlists');
+                } finally {
+                  setIsLoadingPlaylists(false);
+                }
+              }}
+              disabled={isLoadingPlaylists}
               className="w-10 h-10 rounded-full text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              title="Add to Playlist"
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -365,7 +380,7 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
           </Button>
         </div>
 
-        {/* Recommendations Section */}
+        {/* Similar Songs Section */}
         {recommendations.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-6">
@@ -380,7 +395,7 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
                 <Loader2 className="w-6 h-6 text-[#00ff88] animate-spin" />
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
                 {recommendations.map((rec) => (
                   <div key={rec.id} className="relative">
                     <SongCard 
@@ -399,57 +414,6 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
             )}
           </div>
         )}
-
-        {/* Lyrics & Visualizer Tabs */}
-        <Tabs defaultValue="lyrics" className="w-full mb-8">
-          <TabsList className="w-full bg-[#1a1a1a] rounded-xl p-1 mb-6">
-            <TabsTrigger
-              value="lyrics"
-              className="flex-1 data-[state=active]:bg-[#00ff88] data-[state=active]:text-black rounded-lg"
-            >
-              <Music2 className="w-4 h-4 mr-2" />
-              Lyrics
-            </TabsTrigger>
-            <TabsTrigger
-              value="visualizer"
-              className="flex-1 data-[state=active]:bg-[#a855f7] data-[state=active]:text-white rounded-lg"
-            >
-              Visualizer
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="lyrics" className="mt-0">
-            <div className="bg-[#1a1a1a] rounded-xl p-8 min-h-[400px]">
-              <div className="space-y-4">
-                {lyrics.map((lyric, index) => (
-                  <motion.p
-                    key={index}
-                    className={`text-center text-2xl transition-all duration-500 ${
-                      index === currentLyricIndex
-                        ? 'text-[#00ff88] scale-110'
-                        : 'text-gray-500 scale-100'
-                    }`}
-                    animate={{
-                      opacity: index === currentLyricIndex ? 1 : 0.3,
-                    }}
-                  >
-                    {lyric.text}
-                  </motion.p>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="visualizer" className="mt-0">
-            <div className="bg-[#0a0a0a] rounded-xl overflow-hidden">
-              <canvas
-                ref={canvasRef}
-                className="w-full h-[400px] cursor-pointer"
-                onClick={() => {/* Could trigger fullscreen */}}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
 
         {/* Credits Section */}
         <Collapsible open={isCreditsOpen} onOpenChange={setIsCreditsOpen}>
@@ -492,6 +456,23 @@ export function SongDetail({ song: propSong, initialSong, onNavigate, onPlaySong
           </CollapsibleContent>
         </Collapsible>
       </div>
+
+      <AddToPlaylistDialog
+        isOpen={isAddToPlaylistDialogOpen}
+        onClose={() => setIsAddToPlaylistDialogOpen(false)}
+        songId={song?.id || ''}
+        playlists={playlists}
+        onCreatePlaylist={() => {
+          setIsAddToPlaylistDialogOpen(false);
+          // Navigate to library to create playlist
+          onNavigate?.('library', { category: 'playlists' });
+        }}
+        onAddToPlaylist={async (playlistId: string) => {
+          if (!song?.id) return;
+          await addSongToPlaylist(playlistId, song.id);
+        }}
+        isLoading={isLoadingPlaylists}
+      />
     </ScrollArea>
   );
 }
