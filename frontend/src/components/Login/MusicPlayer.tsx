@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, ListMusic, Maximize2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, ListMusic } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
 import { WaveformAnimation } from './WaveformAnimation';
@@ -23,9 +23,10 @@ interface MusicPlayerProps {
   isPlaying?: boolean;
   onPlayPause?: (playing: boolean) => void;
   onSongEnd?: () => void;
+  onToggleRightPanel?: () => void;
 }
 
-export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause, onSongEnd }: MusicPlayerProps) {
+export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying: externalIsPlaying = false, onPlayPause, onSongEnd, onToggleRightPanel }: MusicPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const isPlayingRef = useRef(externalIsPlaying); // Ref to track current playing state
   const isSeekingRef = useRef(false); // Ref to track if user is seeking
@@ -426,17 +427,7 @@ export function MusicPlayer({ onExpandClick, onNavigate, currentSong, isPlaying:
           <Button
             size="icon"
             variant="ghost"
-            onClick={onExpandClick}
-            className="w-9 h-9 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </Button>
-        </motion.div>
-
-        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            size="icon"
-            variant="ghost"
+            onClick={() => { onToggleRightPanel?.(); }}
             className="w-9 h-9 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
           >
             <ListMusic className="w-4 h-4" />
