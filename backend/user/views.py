@@ -584,7 +584,16 @@ class SignUpAPIView(views.APIView):
             if not serializer.is_valid():
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
-            user = serializer.save()
+            try:
+                user = serializer.save()
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to create user: {str(e)}")
+                return Response(
+                    {"error": "Failed to create user account", "detail": str(e)}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             
             # Create OTP and send via email
             try:
@@ -624,11 +633,15 @@ class SignUpAPIView(views.APIView):
         except Exception as e:
             # Log the full error for debugging
             import traceback
+            import logging
             error_trace = traceback.format_exc()
-            # Return error details - in production, you might want to log this instead
-            from django.conf import settings
+            logger = logging.getLogger(__name__)
+            logger.error(f"Signup error: {str(e)}\n{error_trace}")
+            
+            # Return error details - always show error for debugging
+            error_detail = f"Error type: {type(e).__name__}, Message: {str(e)}"
             return Response(
-                {"error": "An unexpected error occurred during signup", "detail": str(e) if getattr(settings, 'DEBUG', False) else "Internal server error"},
+                {"error": "An unexpected error occurred during signup", "detail": error_detail},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
