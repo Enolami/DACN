@@ -405,16 +405,64 @@ def stream_audio(request, pk):
     """
     Efficiently streams the audio file to the client with HTTP Range support.
     Supports seeking and partial content requests for better performance.
+    Falls back to audio_file_url if local file doesn't exist.
     """
     song = get_object_or_404(Song, pk=pk)
 
-    if not song.audio_file:
-        raise Http404("Audio file not found")
+    # Check if we have a local file
+    has_local_file = False
+    path = None
+    
+    if song.audio_file:
+        try:
+            path = song.audio_file.path
+            if os.path.exists(path):
+                has_local_file = True
+        except (ValueError, AttributeError):
+            # File field exists but path is not accessible
+            pass
 
-    path = song.audio_file.path
-
-    if not os.path.exists(path):
-        raise Http404("Audio file not found")
+    # If no local file, proxy the external URL to avoid CORS issues
+    if not has_local_file:
+        if song.audio_file_url:
+            # Proxy the external audio URL (Jamendo or other CDN)
+            # This avoids CORS issues and allows range requests
+            try:
+                range_header = request.META.get('HTTP_RANGE', '').strip()
+                headers = {}
+                if range_header:
+                    headers['Range'] = range_header
+                
+                audio_response = requests.get(song.audio_file_url, headers=headers, stream=True, timeout=30)
+                audio_response.raise_for_status()
+                
+                # Determine content type from response or URL
+                content_type = audio_response.headers.get('Content-Type', 'audio/mpeg')
+                
+                # Create streaming response
+                def stream_proxy():
+                    for chunk in audio_response.iter_content(chunk_size=8192):
+                        if chunk:
+                            yield chunk
+                
+                response = StreamingHttpResponse(stream_proxy(), content_type=content_type)
+                
+                # Copy relevant headers from the proxied response
+                if 'Content-Length' in audio_response.headers:
+                    response['Content-Length'] = audio_response.headers['Content-Length']
+                if 'Content-Range' in audio_response.headers:
+                    response['Content-Range'] = audio_response.headers['Content-Range']
+                    response.status_code = 206  # Partial Content
+                if 'Accept-Ranges' in audio_response.headers:
+                    response['Accept-Ranges'] = audio_response.headers['Accept-Ranges']
+                else:
+                    response['Accept-Ranges'] = 'bytes'
+                
+                return response
+            except requests.RequestException as e:
+                raise Http404(f"Could not fetch audio: {str(e)}")
+        else:
+            raise Http404("Audio file not found")
 
     file_size = os.path.getsize(path)
     
