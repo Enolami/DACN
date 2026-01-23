@@ -153,16 +153,16 @@ export function HomePage({ onNavigate }: HomePageProps) {
     <ScrollArea className="flex-1 h-full bg-black">
       <div className="p-6 md:p-8 pb-32">
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="bg-transparent border-b border-[#1a1a1a] rounded-none p-0 h-auto gap-8 mb-8">
+          <TabsList className="bg-[#0a0a0a] text-gray-400 inline-flex h-10 w-fit items-center justify-center rounded-lg p-1 border border-[#333333] mb-8">
             <TabsTrigger
               value="all"
-              className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-[#00ff88] data-[state=active]:text-[#00ff88] text-gray-400 pb-4"
+              className="inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 text-gray-400 hover:text-white hover:bg-[#1a1a1a] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#00ff88]/20 data-[state=active]:to-[#00cc66]/10 data-[state=active]:text-[#00ff88] data-[state=active]:border-[#00ff88]/30 data-[state=active]:shadow-[0_0_10px_rgba(0,255,136,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00ff88]/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
             >
               All
             </TabsTrigger>
             <TabsTrigger
               value="music"
-              className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-[#00ff88] data-[state=active]:text-[#00ff88] text-gray-400 pb-4"
+              className="inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 text-gray-400 hover:text-white hover:bg-[#1a1a1a] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#00ff88]/20 data-[state=active]:to-[#00cc66]/10 data-[state=active]:text-[#00ff88] data-[state=active]:border-[#00ff88]/30 data-[state=active]:shadow-[0_0_10px_rgba(0,255,136,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00ff88]/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
             >
               Music
             </TabsTrigger>

@@ -305,7 +305,9 @@ class JamendoImportView(APIView):
             release_date = None
             if release_date_str:
                 try:
-                    release_date = datetime.strptime(release_date_str, "%Y-%m-%d")
+                    from django.utils import timezone
+                    naive_date = datetime.strptime(release_date_str, "%Y-%m-%d")
+                    release_date = timezone.make_aware(naive_date)
                 except (ValueError, TypeError):
                     # If date format is unexpected, just skip it
                     print(f"Warning: Could not parse release date '{release_date_str}'")

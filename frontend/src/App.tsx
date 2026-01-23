@@ -40,6 +40,8 @@ function App() {
   const [selectedSong, setSelectedSong] = useState<any>(null);
   const [showNowPlaying, setShowNowPlaying] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Control visibility of the right-side panel (queue/history)
+  const [showRightPanel, setShowRightPanel] = useState(true);
   
   // Navigation history
   const [history, setHistory] = useState<NavigationState[]>([]);
@@ -601,6 +603,7 @@ function App() {
                 />
                 {renderContent()}
               </div>
+              {showRightPanel && (
               <RightPanel 
                 onNavigate={handleNavigate} 
                 currentSong={currentSong}
@@ -615,10 +618,12 @@ function App() {
                   setIsPlaying(true);
                 }}
               />
+              )}
             </div>
             <MusicPlayer 
               onNavigate={handleNavigate}
               onExpandClick={handleExpandPlayer}
+              onToggleRightPanel={() => setShowRightPanel(s => !s)}
               currentSong={currentSong}
               isPlaying={isPlaying}
               onPlayPause={setIsPlaying}

@@ -78,23 +78,32 @@ export function RightPanel({
     fetchData();
   }, [currentSong]);
 
+  const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+
   return (
     <div className="w-80 bg-black h-full border-l border-[#1a1a1a] flex flex-col">
-      <Tabs defaultValue="queue" className="flex-1 flex flex-col">
-        <div className="p-6 pb-0">
-          <TabsList className="grid w-full grid-cols-2 bg-[#0a0a0a]">
-            <TabsTrigger value="queue" className="flex items-center gap-2">
+      <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as any)} className="flex-1 flex flex-col">
+        <div className="px-6 pb-0">
+          <TabsList className="bg-[#0a0a0a] text-gray-400 inline-flex h-10 w-full items-center justify-center rounded-lg p-1 border border-[#333333]">
+            <TabsTrigger 
+              value="queue" 
+              className="inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 text-gray-400 hover:text-white hover:bg-[#1a1a1a] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#00ff88]/20 data-[state=active]:to-[#00cc66]/10 data-[state=active]:text-[#00ff88] data-[state=active]:border-[#00ff88]/30 data-[state=active]:shadow-[0_0_10px_rgba(0,255,136,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00ff88]/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            >
               <Music2 className="w-4 h-4" />
               Queue
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="history" 
+              className="inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 text-gray-400 hover:text-white hover:bg-[#1a1a1a] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#00ff88]/20 data-[state=active]:to-[#00cc66]/10 data-[state=active]:text-[#00ff88] data-[state=active]:border-[#00ff88]/30 data-[state=active]:shadow-[0_0_10px_rgba(0,255,136,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00ff88]/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            >
               <History className="w-4 h-4" />
               History
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="queue" className="flex-1 flex flex-col m-0 mt-4">
+        {activeTab === 'queue' && (
+        <TabsContent value="queue" className="flex-1 flex flex-col m-0">
           <div className="px-6 pb-4 flex items-center justify-between">
             <div>
               <h3 className="text-white text-sm font-medium">Up Next</h3>
@@ -243,8 +252,10 @@ export function RightPanel({
             )}
           </ScrollArea>
         </TabsContent>
+        )}
 
-        <TabsContent value="history" className="flex-1 flex flex-col m-0 mt-4">
+        {activeTab === 'history' && (
+        <TabsContent value="history" className="flex-1 flex flex-col m-0">
           <div className="px-6 pb-4">
             <h3 className="text-white text-sm font-medium">Recently Played</h3>
             <p className="text-gray-400 text-xs mt-1">{recentlyPlayed.length} songs</p>
@@ -284,6 +295,7 @@ export function RightPanel({
             )}
           </ScrollArea>
         </TabsContent>
+        )}
       </Tabs>
     </div>
   );

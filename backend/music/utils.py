@@ -94,6 +94,11 @@ def upload_album_cover(image_url: str, album_id: str) -> Optional[dict]:
     Returns:
         dict: Cloudinary upload result with 'secure_url' and 'public_id', or None on error.
     """
+    import cloudinary
+    if not cloudinary.config().get('cloud_name'):
+        print("Cloudinary not configured, skipping album cover upload")
+        return None
+    
     try:
         # Download the image
         response = requests.get(image_url, timeout=10)
