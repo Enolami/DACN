@@ -579,24 +579,58 @@ class SignUpAPIView(views.APIView):
     authentication_classes = []
 
     def post(self, request):
-        serializer = SignUpSerializer(data=request.data)
-        if serializer.is_valid():
+        try:
+            serializer = SignUpSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
             user = serializer.save()
             
             # Create OTP and send via email
-            otp = SignupOTP.create_for_user(user)
+            try:
+                otp = SignupOTP.create_for_user(user)
+            except Exception as e:
+                # If OTP creation fails, delete the user and return error
+                user.delete()
+                return Response(
+                    {"error": f"Failed to create verification code: {str(e)}"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             
-            subject = "Verify your email address"
-            message = f"Welcome! Your email verification code is: {otp.code}\n\nIt will expire in 10 minutes.\n\nIf you didn't create an account, please ignore this email."
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+            # Send email with OTP
+            try:
+                subject = "Verify your email address"
+                message = f"Welcome! Your email verification code is: {otp.code}\n\nIt will expire in 10 minutes.\n\nIf you didn't create an account, please ignore this email."
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+            except Exception as e:
+                # If email sending fails, log but don't fail the signup
+                # User can request a new OTP later
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send signup email to {user.email}: {str(e)}")
+                # Still return success, but note email might not have been sent
+                return Response({
+                    "message": "Account created, but email verification code could not be sent. Please contact support.",
+                    "user_id": user.pk,
+                    "email": user.email,
+                    "warning": "Email delivery failed"
+                }, status=status.HTTP_201_CREATED)
             
             return Response({
                 "message": "Account created. Please check your email for the verification code.",
                 "user_id": user.pk,
                 "email": user.email
             }, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Log the full error for debugging
+            import traceback
+            error_trace = traceback.format_exc()
+            # Return error details - in production, you might want to log this instead
+            from django.conf import settings
+            return Response(
+                {"error": "An unexpected error occurred during signup", "detail": str(e) if getattr(settings, 'DEBUG', False) else "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class SignUpVerifyOTPAPIView(views.APIView):
