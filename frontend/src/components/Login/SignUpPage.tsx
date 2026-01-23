@@ -5,14 +5,20 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { registerUser } from '../../services/api'; // Import the API service
+import { registerUser, loginWithGoogle, loginWithFacebook, storeTokens, linkOAuthAccount } from '../../services/api';
+import { AccountLinkingDialog } from './AccountLinkingDialog';
+import { useGoogleLogin } from '@react-oauth/google';
+import FacebookLogin from '@greatsumini/react-facebook-login';
+
+const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID || '';
 
 interface SignUpPageProps {
   onSignUp: (email: string) => void;
   onNavigateToLogin: () => void;
+  onLogin?: (token: string, remember?: boolean, view?: string, data?: any) => void; // For OAuth login success
 }
 
-export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
+export function SignUpPage({ onSignUp, onNavigateToLogin, onLogin }: SignUpPageProps) {
   // 1. State Management
   const [formData, setFormData] = useState({
     fullname: '',
@@ -25,6 +31,114 @@ export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Account linking state
+  const [showAccountLinking, setShowAccountLinking] = useState(false);
+  const [linkingData, setLinkingData] = useState<{
+    email: string;
+    provider: 'google' | 'facebook';
+    oauthAccessToken: string;
+  } | null>(null);
+
+  // Google Login Hook
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      setError('');
+      try {
+        const data = await loginWithGoogle(tokenResponse.access_token);
+        
+        // Check if account linking is needed
+        if (data.needs_account_linking) {
+          setLinkingData({
+            email: data.email,
+            provider: 'google',
+            oauthAccessToken: data.oauth_access_token || tokenResponse.access_token,
+          });
+          setShowAccountLinking(true);
+          return;
+        }
+        
+        // Check if username is needed (OAuth users always need to set username)
+        if (data.needs_username) {
+          // Store temp token and navigate to username setup
+          storeTokens(data.temp_token, '', true);
+          if (onLogin) {
+            onLogin(data.temp_token, true, 'set-username', data);
+          }
+          return;
+        }
+        
+        // Social signups behave like "remember me" by default
+        storeTokens(data.access, data.refresh, true);
+        if (onLogin) {
+          onLogin(data.access, true, undefined, data);
+        }
+      } catch (err: any) {
+        setError(err.message || 'Google signup failed.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    onError: () => setError('Google signup cancelled.'),
+  });
+
+  // Facebook Login Handlers
+  const handleFacebookSuccess = async (response: any) => {
+    console.log('Facebook Success:', response);
+    setIsLoading(true);
+    setError('');
+    try {
+      // Check if user actually accepted (has accessToken and userID)
+      if (!response.accessToken || !response.userID) {
+        // User cancelled or didn't grant permissions
+        setError('Facebook signup was cancelled.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await loginWithFacebook(response.accessToken);
+      
+      // Check if account linking is needed
+      if (data.needs_account_linking) {
+        setLinkingData({
+          email: data.email,
+          provider: 'facebook',
+          oauthAccessToken: data.oauth_access_token || response.accessToken,
+        });
+        setShowAccountLinking(true);
+        return;
+      }
+      
+      // Check if username is needed (OAuth users always need to set username)
+      if (data.needs_username) {
+        // Store temp token and navigate to username setup
+        storeTokens(data.temp_token, '', true);
+        if (onLogin) {
+          onLogin(data.temp_token, true, 'set-username', data);
+        }
+        return;
+      }
+      
+      // Social signups behave like "remember me" by default
+      storeTokens(data.access, data.refresh, true);
+      if (onLogin) {
+        onLogin(data.access, true, undefined, data);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Facebook signup failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFacebookFail = (error: any) => {
+    console.error('Facebook Signup Failed:', error);
+    setIsLoading(false);
+    setError('Facebook signup was cancelled or failed.');
+  };
+
+  
 
   // 2. Handle Input Changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,8 +248,9 @@ export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 className="w-full bg-white hover:bg-gray-100 text-black gap-3 py-6 rounded-xl"
-                type="button" // Explicitly set type button to prevent form submission
-                onClick={() => console.log("Google Sign Up")}
+                type="button"
+                onClick={() => googleLogin()}
+                disabled={isLoading}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -159,18 +274,26 @@ export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
               </Button>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                className="w-full bg-white hover:bg-gray-100 text-black gap-3 py-6 rounded-xl"
-                type="button"
-                onClick={() => console.log("Apple Sign Up")}
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                </svg>
-                Continue with Apple
-              </Button>
-            </motion.div>
+            <FacebookLogin
+              appId={FACEBOOK_APP_ID}
+              onSuccess={handleFacebookSuccess}
+              onFail={handleFacebookFail}
+              render={({ onClick }) => (
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    className="w-full bg-[#1877F2] hover:bg-[#1864D9] text-white gap-3 py-6 rounded-xl"
+                    onClick={onClick} // Attach the library's click handler
+                    type="button"
+                    disabled={isLoading}
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.791-4.647 4.535-4.647 1.317 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Continue with Facebook
+                  </Button>
+                </motion.div>
+              )}
+            />
           </div>
 
           {/* Divider */}
@@ -283,18 +406,31 @@ export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm">
-              <input 
-                type="checkbox" 
-                className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a]" 
-                required 
-              />
-              <label className="text-gray-400 cursor-pointer">
-                I agree to the{' '}
-                <button type="button" onClick={() => {/* TODO: Handle terms click */}} className="text-[#00ff88] hover:underline">
-                  Terms & Privacy Policy
-                </button>
-              </label>
+            <div className="text-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a]" 
+                  required 
+                />
+                <label className="text-gray-400 cursor-pointer">
+                  I agree to the{' '}
+                  <span className="text-[#00ff88] hover:underline">
+                    Terms of Service
+                  </span>{' '}
+                  and{' '}
+                  <span className="text-[#00ff88] hover:underline">
+                    Privacy Policy
+                  </span>
+                  .
+                </label>
+              </div>
+              <p className="text-gray-500 text-xs leading-relaxed">
+                By creating an account, you confirm that you are responsible for all activity on your account,
+                will use the service lawfully for personal, non‑commercial use, will not upload or share content
+                you do not have rights to, understand that content is owned by its respective rights holders,
+                and accept that the service may change or be discontinued at any time.
+              </p>
             </div>
 
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -322,6 +458,42 @@ export function SignUpPage({ onSignUp, onNavigateToLogin }: SignUpPageProps) {
           By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
       </motion.div>
+
+      {/* Account Linking Dialog */}
+      {linkingData && (
+        <AccountLinkingDialog
+          isOpen={showAccountLinking}
+          onClose={() => {
+            setShowAccountLinking(false);
+            setLinkingData(null);
+          }}
+          onLink={async (password: string) => {
+            if (!linkingData) return;
+            
+            try {
+              const data = await linkOAuthAccount(
+                linkingData.email,
+                password,
+                linkingData.provider,
+                linkingData.oauthAccessToken
+              );
+              
+              // Store tokens and navigate to home
+              storeTokens(data.access, data.refresh, true);
+              setShowAccountLinking(false);
+              setLinkingData(null);
+              if (onLogin) {
+                onLogin(data.access, true, undefined, data);
+              }
+            } catch (err: any) {
+              throw err; // Let the dialog handle the error
+            }
+          }}
+          email={linkingData.email}
+          provider={linkingData.provider}
+          message="We found an existing account with this email. Would you like to link your account to it?"
+        />
+      )}
     </div>
   );
 }

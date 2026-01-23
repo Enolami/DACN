@@ -518,6 +518,7 @@ function App() {
           <SignUpPage 
             onSignUp={handleSignUp}
             onNavigateToLogin={handleNavigateToLogin}
+            onLogin={handleLogin}
           />
         );
       case 'verify-otp':
