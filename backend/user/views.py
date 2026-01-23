@@ -79,15 +79,25 @@ class GoogleLoginAPIView(views.APIView):
     authentication_classes = []
 
     def post(self, request):
-        serializer = GoogleLoginSerializer(data=request.data)
-        if serializer.is_valid():
+        try:
+            serializer = GoogleLoginSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
             access_token = serializer.validated_data['access_token']
             
             # 1. Verify token with Google and get user info
-            google_response = requests.get(
-                'https://www.googleapis.com/oauth2/v3/userinfo',
-                params={'access_token': access_token}
-            )
+            try:
+                google_response = requests.get(
+                    'https://www.googleapis.com/oauth2/v3/userinfo',
+                    params={'access_token': access_token},
+                    timeout=10
+                )
+            except requests.RequestException as e:
+                return Response(
+                    {"error": f"Failed to verify Google token: {str(e)}"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             
             if not google_response.ok:
                 return Response(
@@ -95,7 +105,14 @@ class GoogleLoginAPIView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            user_data = google_response.json()
+            try:
+                user_data = google_response.json()
+            except ValueError:
+                return Response(
+                    {"error": "Invalid response from Google"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
             email = user_data.get('email')
             # Get full name from Google (prefer 'name', fallback to 'given_name')
             oauth_name = user_data.get('name', '') or user_data.get('given_name', '')
@@ -139,7 +156,13 @@ class GoogleLoginAPIView(views.APIView):
                         user.is_active = True
                         user.save(update_fields=['is_active', 'updated_at'])
                     # Continue to normal login flow (skip username check, go straight to JWT generation)
-                    refresh = RefreshToken.for_user(user)
+                    try:
+                        refresh = RefreshToken.for_user(user)
+                    except Exception as e:
+                        return Response(
+                            {"error": f"Failed to generate token: {str(e)}"}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
                     return Response({
                         'access': str(refresh.access_token),
                         'refresh': str(refresh),
@@ -193,15 +216,28 @@ class GoogleLoginAPIView(views.APIView):
             
             if needs_username:
                 # Return a flag indicating username is needed
+                try:
+                    temp_token = RefreshToken.for_user(user).access_token
+                except Exception as e:
+                    return Response(
+                        {"error": f"Failed to generate token: {str(e)}"}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
                 return Response({
                     'needs_username': True,
                     'email': user.email,
-                    'temp_token': str(RefreshToken.for_user(user).access_token),  # Temporary token for username setup
+                    'temp_token': str(temp_token),  # Temporary token for username setup
                     'message': 'Please choose a username to continue'
                 }, status=status.HTTP_200_OK)
             
             # 4. Generate JWT for your app
-            refresh = RefreshToken.for_user(user)
+            try:
+                refresh = RefreshToken.for_user(user)
+            except Exception as e:
+                return Response(
+                    {"error": f"Failed to generate token: {str(e)}"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
             return Response({
                 'access': str(refresh.access_token),
@@ -211,8 +247,16 @@ class GoogleLoginAPIView(views.APIView):
                 'username': user.username,
                 'needs_username': False
             })
-            
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Log the full error for debugging
+            import traceback
+            error_trace = traceback.format_exc()
+            # Return error details - in production, you might want to log this instead
+            from django.conf import settings
+            return Response(
+                {"error": "An unexpected error occurred", "detail": str(e) if getattr(settings, 'DEBUG', False) else "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class FacebookLoginAPIView(views.APIView):
     permission_classes = [permissions.AllowAny]
