@@ -606,23 +606,61 @@ class SignUpAPIView(views.APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            # Send email with OTP
+            # Send email with OTP (non-blocking with timeout)
+            email_sent = False
             try:
-                subject = "Verify your email address"
-                message = f"Welcome! Your email verification code is: {otp.code}\n\nIt will expire in 10 minutes.\n\nIf you didn't create an account, please ignore this email."
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+                import threading
+                import queue
+                
+                def send_email_thread():
+                    try:
+                        subject = "Verify your email address"
+                        message = f"Welcome! Your email verification code is: {otp.code}\n\nIt will expire in 10 minutes.\n\nIf you didn't create an account, please ignore this email."
+                        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+                        result_queue.put(True)
+                    except Exception as e:
+                        result_queue.put(False)
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Failed to send signup email to {user.email}: {str(e)}")
+                
+                result_queue = queue.Queue()
+                email_thread = threading.Thread(target=send_email_thread, daemon=True)
+                email_thread.start()
+                email_thread.join(timeout=5)  # 5 second timeout
+                
+                if email_thread.is_alive():
+                    # Thread is still running, timeout occurred
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Email sending timed out for {user.email}")
+                else:
+                    # Thread completed, check result
+                    try:
+                        email_sent = result_queue.get_nowait()
+                    except queue.Empty:
+                        email_sent = False
             except Exception as e:
-                # If email sending fails, log but don't fail the signup
-                # User can request a new OTP later
+                # If email sending setup fails, log but don't fail the signup
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Failed to send signup email to {user.email}: {str(e)}")
-                # Still return success, but note email might not have been sent
+            
+            # Return success response (with or without email)
+            if email_sent:
+                return Response({
+                    "message": "Account created. Please check your email for the verification code.",
+                    "user_id": user.pk,
+                    "email": user.email
+                }, status=status.HTTP_201_CREATED)
+            else:
+                # Email failed but account created - include OTP in response for testing
                 return Response({
                     "message": "Account created, but email verification code could not be sent. Please contact support.",
                     "user_id": user.pk,
                     "email": user.email,
-                    "warning": "Email delivery failed"
+                    "warning": "Email delivery failed",
+                    "otp_code": otp.code  # Temporary: include OTP for testing/debugging
                 }, status=status.HTTP_201_CREATED)
             
             return Response({
